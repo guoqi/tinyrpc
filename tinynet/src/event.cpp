@@ -153,5 +153,4 @@ void EventLoop::loopOnce()
     delete [] events;
 }
 
-
 }

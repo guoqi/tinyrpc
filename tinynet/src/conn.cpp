@@ -166,6 +166,7 @@ namespace tinynet
             panicif(s.expired(), ERR_INVALID_POINTER, "object has been released");
 
             // check if connect is ready
+
             int err = 0;
             socklen_t errlen = sizeof(err);
 
@@ -335,6 +336,5 @@ namespace tinynet
         server->bind(sockpath);
         return server;
     }
-
 
 }
