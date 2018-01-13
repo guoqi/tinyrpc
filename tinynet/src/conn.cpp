@@ -9,6 +9,7 @@
 #include <functional>
 #include "conn.h"
 #include "logger.h"
+#include "errlist.h"
 #include "net.h"
 
 using namespace std;
@@ -42,7 +43,7 @@ namespace tinynet
                 {
                     return -1;
                 }
-                fatalif(len, -1);
+                fatalif(len == -1);
             }
             msg.append(string(buffer, len));
         } while (len > 0);
@@ -67,7 +68,7 @@ namespace tinynet
                 {
                     return -1;  // socket buffer is full
                 }
-                fatalif(len, -1);
+                fatalif(len == -1);
             }
             total += len;
         } while (total >= msg.length());
@@ -92,7 +93,7 @@ namespace tinynet
         weak_ptr<TcpConn> s = self();
 
         m_event.onRead([s](EventLoop & loop, Event & ev){
-            fatalif(s.expired(), true);
+            panicif(s.expired(), ERR_INVALID_POINTER, "object has been released");
 
             auto self = s.lock();
 
@@ -112,7 +113,7 @@ namespace tinynet
         weak_ptr<TcpConn> s = self();
 
         m_event.onWrite([s](EventLoop & loop, Event & ev){
-            fatalif(s.expired(), true);
+            panicif(s.expired(), ERR_INVALID_POINTER, "object has been released");
 
             auto self = s.lock();
 
@@ -131,19 +132,17 @@ namespace tinynet
         weak_ptr<TcpConn> s = self();
 
         m_event.onWrite([s](EventLoop & loop, Event & ev){
-            fatalif(s.expired(), true);
+            panicif(s.expired(), ERR_INVALID_POINTER, "object has been released");
 
             // check if connect is ready
-            int ret = 0;
             int err = 0;
             socklen_t errlen = sizeof(err);
 
             auto self = s.lock();
 
-            ret = getsockopt(self->fd(), SOL_SOCKET, SO_ERROR, &err, &errlen);
-            fatalif(ret, -1);
+            fatalif(getsockopt(self->fd(), SOL_SOCKET, SO_ERROR, &err, &errlen) == -1);
 
-            fatalnot(err, 0);
+            fatalif(err != 0);
 
             self->m_state = ConnState::CONN;
 
@@ -160,7 +159,7 @@ namespace tinynet
     int TcpConn::createSock()
     {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
-        fatalif(fd, -1);
+        fatalif(fd == -1);
 
         net::setNonBlocking(fd);
 
@@ -203,7 +202,7 @@ namespace tinynet
         : m_loop(loop)
     {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
-        fatalif(fd, -1);
+        fatalif(fd == -1);
         net::setNonBlocking(fd);
 
         attach(fd);
@@ -216,16 +215,14 @@ namespace tinynet
         addr.sin_port = htons((uint16_t)port);
         addr.sin_addr.s_addr = inet_addr(ip.c_str());
 
-        int r = ::bind(fd(), (sockaddr *) & addr, sizeof(addr));
-        fatalif(r, -1);
+        fatalif(::bind(fd(), (sockaddr *) & addr, sizeof(addr)) == -1);
 
-        r = listen(fd(), 100);
-        fatalif(r, -1);
+        fatalif(listen(fd(), 100) == -1);
 
         weak_ptr<TcpServer> s = shared_from_this();
 
         m_event.onRead([s](EventLoop & loop, Event & ev){
-            fatalif(s.expired(), true);
+            panicif(s.expired(), ERR_INVALID_POINTER, "object has been released");
 
             auto self = s.lock();
             auto client = self->accept();
@@ -243,7 +240,7 @@ namespace tinynet
         socklen_t addrlen = 0;
 
         int cfd = ::accept(fd(), &addr, &addrlen);
-        fatalif(cfd, -1);
+        fatalif(cfd == -1);
 
         net::setNonBlocking(cfd);
 

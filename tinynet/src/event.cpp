@@ -19,7 +19,7 @@ EventLoop::EventLoop(int maxnum)
     : m_maxnum(maxnum), m_stop(false)
 {
     m_epfd = epoll_create(maxnum);
-    fatalif(m_epfd, -1);
+    fatalif(m_epfd == -1);
 }
 
 // alter or update event
@@ -110,7 +110,7 @@ void EventLoop::loopOnce()
     }
 
     int n = epoll_wait(m_epfd, events, m_maxnum, timeout);
-    fatalif(n, -1);
+    fatalif(n == -1);
 
     for (int i=0; i<n; ++i)
     {

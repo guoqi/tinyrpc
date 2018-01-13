@@ -14,11 +14,10 @@ using namespace std;
 int create_sock()
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    fatalif(fd, -1);
+    fatalif(fd == -1);
 
     int flags = fcntl(fd, F_GETFL, 0);
-    int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-    fatalif(ret, -1);
+    fatalif(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1);
 
     return fd;
 }

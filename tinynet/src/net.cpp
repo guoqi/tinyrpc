@@ -21,8 +21,7 @@ namespace tinynet
                 flags &= ~O_NONBLOCK;
             }
 
-            int ret = fcntl(fd, F_SETFL, flags);
-            fatalif(ret, -1);
+            fatalif(fcntl(fd, F_SETFL, flags) == -1);
         }
     }
 }

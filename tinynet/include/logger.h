@@ -2,8 +2,8 @@
 // Created by qiguo on 1/1/18.
 //
 
-#ifndef __TINYRPC_LOGGER_H
-#define __TINYRPC_LOGGER_H
+#ifndef __TINYRPC_LOGGER_H__
+#define __TINYRPC_LOGGER_H__
 
 #include <cstdio>
 #include <map>
@@ -12,7 +12,7 @@
 #define debug(fmt, ...)     log(stdout, util::LogLevel::DEBUG, fmt, ##__VA_ARGS__)
 #define info(fmt, ...)      log(stdout, util::LogLevel::INFO, fmt, ##__VA_ARGS__)
 #define warn(fmt, ...)      log(stderr, util::LogLevel::WARN, fmt, ##__VA_ARGS__)
-#define fault(fmt, ...)     log(stderr, util::LogLevel::ERROR, fmt, ##__VA_ARGS__)
+#define error(fmt, ...)     log(stderr, util::LogLevel::ERROR, fmt, ##__VA_ARGS__)
 
 #define log(fd, level, fmt, ...) do { fprintf(fd, "[%s][%s][%d]" fmt "\n", util::LEVEL_STRING.at(level).c_str(), __FILE__, __LINE__, ##__VA_ARGS__); } while (false)
 

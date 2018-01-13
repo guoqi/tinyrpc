@@ -12,15 +12,18 @@
 #include <sstream>
 #include <error.h>
 #include <cstring>
+#include "logger.h"
 
 /**
  * Macro for handling system call fails
+ * fatal family is used on system call error
+ * panic family is used on self-defined error
  */
-#define fatal()                 do { throw util::TinyExp(__LINE__, __FILE__); } while (false)
-#define fatalif(r, cond)        do { if ((r) == (cond)) throw util::TinyExp(__LINE__, __FILE__); } while (false)
-#define fatalnot(r, cond)       do { if ((r) != (cond)) throw util::TinyExp(__LINE__, __FILE__); } while (false)
-#define returnif(r, cond)       do { if ((r) == (cond)) return -1; } while (false)
-#define returnnot(r, cond)       do { if ((r) != (cond)) return -1; } while (false)
+#define fatal()                     do { error("fatal [%d:%s]", errno, strerror(errno)); throw util::SysExp(__LINE__, __FILE__); } while (false)
+#define fatalif(cond)               do { if ((cond)) { error("fatal [%d:%s] with cond", errno, strerror(errno)); throw util::SysExp(__LINE__, __FILE__); } } while (false)
+#define panic(err, msg)             do { error("panic [%d:%s]", err, msg); throw util::TinyExp(err, msg, __LINE__, __FILE__); } while (false)
+#define panicif(cond, err, msg)     do { if ((cond)) { error("panic [%d:%s]", err, msg); throw util::TinyExp(err, msg, __LINE__, __FILE__); } } while (false)
+#define returnif(cond, r)           do { if ((cond)) return r; } while (false)
 
 // some common utilities
 namespace util
@@ -33,22 +36,22 @@ namespace util
         virtual ~noncopyable() = default;
     };
 
+    // basic exception
     struct TinyExp : public std::exception
     {
         TinyExp(const int error, const std::string & errmsg, int line, const char * file) noexcept
             : m_error(error), m_errmsg(errmsg), m_line(line), m_file(file) {}
-        TinyExp(int line, const char * file) noexcept : TinyExp(errno, strerror(errno), line, file) {}
 
         virtual ~TinyExp() = default;
 
         virtual inline const char * what() const noexcept { return m_errmsg.c_str(); }
-        virtual inline int error() const noexcept { return m_error; }
+        virtual inline int code() const noexcept { return m_error; }
 
         std::string toStr() const noexcept
         {
             std::stringstream ss;
             ss << "TinyExp[" << m_file << "][" << m_line << "] - "
-               << m_error << ": " << m_errmsg;
+               << code() << ": " << what();
             return ss.str();
         }
 
@@ -59,6 +62,12 @@ namespace util
         std::string     m_file;
     };
 
+    // linux system call exception
+    // error code is global variable errno and error message is strerror(errno)
+    struct SysExp : public TinyExp
+    {
+        SysExp (int line, const char * file) noexcept : TinyExp(errno, strerror(errno), line, file) {}
+    };
 
     // Time related function
     namespace Time
