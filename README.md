@@ -9,7 +9,7 @@
 - Support service register and service dicovery
 
 ## Example
-```(shell)
+```Bash
 $ cd example && mkdir build && cd buid
 $ cmake ..
 $ make

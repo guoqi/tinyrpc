@@ -3,7 +3,7 @@
 ## Usage
 
 ### Simple event library
-```(C++)
+```cpp
 /*
  * Create a client socket (read/write) event
  *   Assume variable fd is a valid socket fd and it is set non-blocking flag.
@@ -88,7 +88,7 @@ When the event loop is run, these events run as the follow order:
 *See also example/echocli.cpp and example/echosvr.cpp*
 
 #### Server-Side
-```(C++)
+```cpp
 EventLoop loop(100);
 
 auto server = TcpServer::startServer(loop, "127.0.0.1", 9999);
@@ -114,7 +114,7 @@ loop.start();
 ```
 
 #### Client-Side
-```(C++)
+```cpp
 EventLoop loop(100);
 
 auto client = TcpConn::createConnection(loop, "127.0.0.1", 9999);
