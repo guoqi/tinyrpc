@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include "util.h"
 #include "event.h"
+#include "net.h"
 
 namespace tinynet
 {
@@ -41,10 +42,12 @@ namespace tinynet
     {
     public:
         static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const std::string ip, int port);
+        static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const Ip4Addr & addr);
         static std::shared_ptr<TcpConn> createAttacher(EventLoop & loop, int fd);
 
         explicit TcpConn(EventLoop & loop);
         TcpConn(EventLoop & loop, const std::string & ip, int port);
+        TcpConn(EventLoop & loop, const Ip4Addr & addr);
         virtual ~TcpConn() = default;
 
         void closeRead() { m_event.readable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_RD); }
@@ -57,27 +60,29 @@ namespace tinynet
         std::shared_ptr<TcpConn> onWrite(const TcpConnCallback & cb);
         std::shared_ptr<TcpConn> onConnected(const TcpConnCallback & cb);
 
+        Ip4Addr peername() const;
+
     public:
-        ssize_t send(const char * msg, size_t len);
+        ssize_t send(const char * msg, size_t len) const;
 
-        ssize_t send(const std::string & msg);
+        ssize_t send(const std::string & msg) const;
 
-        ssize_t sendall(const std::string & msg);
+        ssize_t sendall(const std::string & msg) const;
 
-        ssize_t recv(char * msg, size_t len);
+        ssize_t recv(char * msg, size_t len) const;
 
-        ssize_t recvall(std::string & msg);
+        ssize_t recvall(std::string & msg) const;
 
     private:
         int createSock ();
 
-        void connect(const std::string & ip, int port);
+        void connect(const Ip4Addr & ipaddr);
 
         std::shared_ptr<TcpConn> self() { return shared_from_this(); }
 
         void attach(int fd) { m_event.attach(fd); }
 
-        inline int fd() { return m_event.fd(); }
+        inline int fd() const { return m_event.fd(); }
 
     private:
         Event           m_event;
@@ -98,6 +103,7 @@ namespace tinynet
         virtual ~TcpServer() = default;
 
         void bind(const std::string & ip, int port);
+        void bind(const Ip4Addr & addr);
 
         void onClientAccepted(const TcpConnCallback & cb) { m_clientAcceptedAction = cb; }
 

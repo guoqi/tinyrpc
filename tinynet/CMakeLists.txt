@@ -18,4 +18,6 @@ add_library(tinynet
         src/event.cpp
         src/net.cpp
         src/util.cpp
-        include/errlist.h)
+        include/errlist.h
+        include/sig.h
+        src/sig.cpp)

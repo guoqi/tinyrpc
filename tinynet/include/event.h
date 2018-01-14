@@ -12,7 +12,7 @@
 #include <vector>
 #include <map>
 #include <queue>
-#include <signal.h>
+#include <sig.h>
 #include <assert.h>
 #include "util.h"
 

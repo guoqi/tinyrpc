@@ -22,15 +22,20 @@ namespace tinynet
     }
 
     TcpConn::TcpConn(EventLoop &loop, const std::string &ip, int port)
+        : TcpConn (loop, Ip4Addr(ip, port))
+    {
+    }
+
+    TcpConn::TcpConn(EventLoop &loop, const Ip4Addr &addr)
         : TcpConn (loop)
     {
         int fd = createSock();
         attach(fd);
-        connect(ip, port);
+        connect(addr);
     }
 
 
-    ssize_t TcpConn::recvall(std::string &msg)
+    ssize_t TcpConn::recvall(std::string &msg) const
     {
         ssize_t len = 0;
         do
@@ -41,7 +46,7 @@ namespace tinynet
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                 {
-                    return -1;
+                    return -1; // recv socket buffer is empty !
                 }
                 fatalif(len == -1);
             }
@@ -51,12 +56,12 @@ namespace tinynet
         return msg.length();
     }
 
-    ssize_t TcpConn::recv(char *msg, size_t len)
+    ssize_t TcpConn::recv(char *msg, size_t len) const
     {
         return ::recv(fd(), msg, len, 0);
     }
 
-    ssize_t TcpConn::sendall(const std::string &msg)
+    ssize_t TcpConn::sendall(const std::string &msg) const
     {
         size_t total = 0;
         do
@@ -76,12 +81,12 @@ namespace tinynet
         return total;
     }
 
-    ssize_t TcpConn::send(const std::string &msg)
+    ssize_t TcpConn::send(const std::string &msg) const
     {
         return send(msg.c_str(), msg.length());
     }
 
-    ssize_t TcpConn::send(const char *msg, size_t len)
+    ssize_t TcpConn::send(const char *msg, size_t len) const
     {
         return ::send(fd(), msg, len, 0);
     }
@@ -166,12 +171,9 @@ namespace tinynet
         return fd;
     }
 
-    void TcpConn::connect(const std::string &ip, int port)
+    void TcpConn::connect(const Ip4Addr & ipaddr)
     {
-        struct sockaddr_in addr;
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons((uint16_t)port);
-        addr.sin_addr.s_addr = inet_addr(ip.c_str());
+        struct sockaddr_in addr = ipaddr.pack();
 
         int r = ::connect(fd(), (sockaddr *) &addr, sizeof(addr));
         if (r == -1)
@@ -183,9 +185,27 @@ namespace tinynet
        }
     }
 
+    Ip4Addr TcpConn::peername() const
+    {
+        sockaddr_in sa;
+        socklen_t len = sizeof(sa);
+        if (getpeername(fd(), (sockaddr *)&sa, &len))
+        {
+            error("get peername error [%d][%s]", errno, strerror(errno));
+            return Ip4Addr();
+        }
+
+        return Ip4Addr(sa);
+    }
+
     std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const std::string ip, int port)
     {
-        auto conn = make_shared<TcpConn>(loop, ip, port);
+        return createConnection(loop, Ip4Addr(ip, port));
+    }
+
+    std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const Ip4Addr &addr)
+    {
+        auto conn = make_shared<TcpConn>(loop, addr);
         return conn;
     }
 
@@ -193,7 +213,6 @@ namespace tinynet
     {
         auto conn = make_shared<TcpConn>(loop);
         conn->attach(fd);
-        debug("attacher");
         fflush(stdout);
         return conn;
     }
@@ -210,12 +229,14 @@ namespace tinynet
 
     void TcpServer::bind(const std::string &ip, int port)
     {
-        struct sockaddr_in addr;
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons((uint16_t)port);
-        addr.sin_addr.s_addr = inet_addr(ip.c_str());
+        bind(Ip4Addr(ip, port));
+    }
 
-        fatalif(::bind(fd(), (sockaddr *) & addr, sizeof(addr)) == -1);
+    void TcpServer::bind(const Ip4Addr &addr)
+    {
+        struct sockaddr_in sa = addr.pack();
+
+        fatalif(::bind(fd(), (sockaddr *) & sa, sizeof(sa)) == -1);
 
         fatalif(listen(fd(), 100) == -1);
 
@@ -226,6 +247,13 @@ namespace tinynet
 
             auto self = s.lock();
             auto client = self->accept();
+            auto peer = client->peername();
+
+            if (peer.valid())
+            {
+                info("accept client from [%s:%d]", peer.ip().c_str(), peer.port());
+            }
+
             self->m_clients.push_back(client);
             self->m_clientAcceptedAction(client);
         });
