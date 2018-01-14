@@ -3,58 +3,68 @@
 ## Usage
 
 ### Simple event library
-
 ```(C++)
 /*
- * Create a socket (read/write) event
+ * Create a client socket (read/write) event
  *   Assume variable fd is a valid socket fd and it is set non-blocking flag.
- *   Parameter data represents user-side data which may be modified when every callback action runs.
+ *   Before that, you should connect to a server with this fd but don't know if it is succeeded.
  * What a callback hell it is! We will fix it in the later with deferred.
  */
-SockEvent<T> scEvent(S_CONN, fd, data, [](auto & loop, auto & ev, T data) -> bool{
-    // on connect event
-    SockEvent<T> onRead(S_READ, fd, data, [](auto & loop, auto & ev, T data) -> bool{
-        // on read event
-        SocketEvent<T> onWrite(S_WRITE, fd, data, [](auto & loop, auto & ev, T data)-> bool{
-            // on write event
-            loop.alter(onClose);
-        });
-        loop.alter(onWrite);
+Event ev(fd);
+ev.onWrite([](EventLoop & loop, Event & ev){
+    // check if connect successfully
+    
+    ev.onRead([](EventLoop & loop, Event & ev){
+        // read something from server and close fd
+        ev.readable(false);
+        loop.remove(ev);
+        close(ev.fd());
+    }).onWrite([](EventLoop & loop, Event & ev){
+        // send something to server and disable write.
+        ev.writeable(false);
     });
-    loop.alter(onRead);
 });
 
-/*
- * Create a timer event which is accurate to millisecond
+/**
+ * Create an event loop and set a timer which acts after 30ms at first and runs every 100ms after that.
  */
-TimerEvent tmEvent(10, [](auto & loop, auto & ev) -> bool {
-    // do somthing after 10 ms
-});
+EventLoop loop(100);
+loop.runAfter(30, [](EventLoop & loop){
+    cout << "hi, timer runs" << endl;
+}, 100);
 
 /*
  * Create a signal event - handle system signal
  */
-SignalEvent sigEvent([](auto & loop, auto & ev, int sig) -> bool {
-    // do something with variable sig
+Signal::signal(SIGINT, [&loop](int sig){
+    cout << "receive a SIGINT signal" << endl;
+    loop.stop()
 });
 
 /*
- * Create a signal event on specific signal
+ * Handle multiple signals with the same handler 
  */
-SignalEvent sigEvent(SIGHUP, [](auto & loop, auto & ev)->bool {
-    // do something with specific signal SIGHUP
+auto sigset = {SIGUSR1, SIGUSR2};
+Signal::signal(sigset, [](int sig){
+    switch (sig)
+    {
+        case SIGUSR1:
+            cout << "receive a SIGUSR1 signal" << endl;
+            break;
+        case SIGUSR2:
+            cout << "receive a SIGUSR2 signal" << endl;
+            break;
+        default:
+            cout << "unexcepted signal" << endl;
+    }
 });
 
 /*
- * Create an event loop and run
+ * Add event into the event loop and run
  */
-auto & loop = new EventLoop();
 // alter an event into event loop
-loop.alter(scEvent);
-loop.alter(tmEvent);
-loop.alter(sigEvent);
-loop.alter(sigEvent2);
-loop.run(); // run the event loop
+loop.alter(ev);
+loop.start(); // start the event loop
 ```
 
 As shown above, we give typical examples about socket event, timer event and signal event.
@@ -72,3 +82,71 @@ When the event loop is run, these events run as the follow order:
 1. If there is no socket ready and epoll is timeout, call timer events whose timeout equals epoll timeout. (There may be many timer events to be executed.)
 
 1. Check if the event loop is stopped and exit, otherwise go to step 2
+
+
+### Simple network library (only tcp support for now)
+*See also example/echocli.cpp and example/echosvr.cpp*
+
+#### Server-Side
+```(C++)
+EventLoop loop(100);
+
+auto server = TcpServer::startServer(loop, "127.0.0.1", 9999);
+
+server->onClientAccepted([&server](shared_ptr<TcpConn> conn){
+    conn->onRead([&server](shared_ptr<TcpConn> conn){
+        string data;
+        ssize_t ret = conn->recvall(data);
+        info("%s", data.c_str());
+        fflush(stdout);
+
+        conn->send(data);
+
+        if (ret == 0)
+        {
+            conn->close();
+            server->stopServer();
+        }
+    });
+});
+
+loop.start();
+```
+
+#### Client-Side
+```(C++)
+EventLoop loop(100);
+
+auto client = TcpConn::createConnection(loop, "127.0.0.1", 9999);
+
+client->onConnected([&loop](shared_ptr<TcpConn> conn){
+    info("connected");
+    conn->onWrite([](shared_ptr<TcpConn> conn){
+        string data;
+        if (getline(cin, data))
+        {
+            conn->send(data);
+        }
+        else
+        {
+            conn->closeWrite();
+        }
+        conn->readwrite(true, false); // switch to read
+
+    })->onRead([&loop](shared_ptr<TcpConn> conn){
+        string data;
+        ssize_t ret = conn->recvall(data);
+        info("%s", data.c_str());
+
+        conn->readwrite(false, true); // switch to write
+
+        if (ret == 0) // peer close
+        {
+            conn->close();
+            loop.stop(); // capture the event loop
+        }
+    });
+
+    conn->readwrite(false, true); // initial prepare for writing
+});
+```

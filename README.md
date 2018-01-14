@@ -8,6 +8,13 @@
 - Support self-defined IDL
 - Support service register and service dicovery
 
+## Example
+```(shell)
+$ cd example && mkdir build && cd buid
+$ cmake ..
+$ make
+```
+
 ## Building
 
 TODO
