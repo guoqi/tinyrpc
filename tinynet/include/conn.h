@@ -43,11 +43,15 @@ namespace tinynet
     public:
         static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const std::string ip, int port);
         static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const Ip4Addr & addr);
+        static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const std::string sockpath);
+        static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const UdsAddr & addr);
         static std::shared_ptr<TcpConn> createAttacher(EventLoop & loop, int fd);
 
         explicit TcpConn(EventLoop & loop);
         TcpConn(EventLoop & loop, const std::string & ip, int port);
         TcpConn(EventLoop & loop, const Ip4Addr & addr);
+        TcpConn(EventLoop & loop, const std::string & sockpath);
+        TcpConn(EventLoop & loop, const UdsAddr & addr);
         virtual ~TcpConn() = default;
 
         void closeRead() { m_event.readable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_RD); }
@@ -74,9 +78,11 @@ namespace tinynet
         ssize_t recvall(std::string & msg) const;
 
     private:
-        int createSock ();
-
         void connect(const Ip4Addr & ipaddr);
+
+        void connect(const UdsAddr & udsaddr);
+
+        void connect(sockaddr * addr, size_t len);
 
         std::shared_ptr<TcpConn> self() { return shared_from_this(); }
 
@@ -97,6 +103,7 @@ namespace tinynet
     {
     public:
         static std::shared_ptr<TcpServer> startServer(EventLoop & loop, const std::string & ip, int port);
+        static std::shared_ptr<TcpServer> startServr(EventLoop & loop, const std::string & sockpath);
 
         TcpServer(EventLoop & loop);
 
@@ -104,6 +111,8 @@ namespace tinynet
 
         void bind(const std::string & ip, int port);
         void bind(const Ip4Addr & addr);
+        void bind(const std::string & sockpath);
+        void bind(const UdsAddr & addr);
 
         void onClientAccepted(const TcpConnCallback & cb) { m_clientAcceptedAction = cb; }
 
@@ -111,6 +120,8 @@ namespace tinynet
         void stopServer() { m_loop.remove(m_event); ::close(fd()); m_loop.stop(); }
 
     private:
+        void bind(sockaddr * addr, size_t len);
+
         void attach(int fd) { m_event.attach(fd); }
 
         inline int fd() { return m_event.fd(); }

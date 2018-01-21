@@ -29,11 +29,29 @@ namespace tinynet
     TcpConn::TcpConn(EventLoop &loop, const Ip4Addr &addr)
         : TcpConn (loop)
     {
-        int fd = createSock();
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        fatalif(fd == -1);
+
+        net::setNonBlocking(fd);
         attach(fd);
         connect(addr);
     }
 
+    TcpConn::TcpConn(EventLoop & loop, const string & sockpath)
+        : TcpConn (loop, UdsAddr(sockpath))
+    {
+    }
+
+    TcpConn::TcpConn(EventLoop &loop, const UdsAddr &addr)
+        : TcpConn(loop)
+    {
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        fatalif(fd == -1);
+
+        net::setNonBlocking(fd);
+        attach(fd);
+        connect(addr);
+    }
 
     ssize_t TcpConn::recvall(std::string &msg) const
     {
@@ -161,21 +179,23 @@ namespace tinynet
         return self();
     }
 
-    int TcpConn::createSock()
-    {
-        int fd = socket(AF_INET, SOCK_STREAM, 0);
-        fatalif(fd == -1);
-
-        net::setNonBlocking(fd);
-
-        return fd;
-    }
-
     void TcpConn::connect(const Ip4Addr & ipaddr)
     {
-        struct sockaddr_in addr = ipaddr.pack();
+        struct sockaddr_in addr = ipaddr.addr();
 
-        int r = ::connect(fd(), (sockaddr *) &addr, sizeof(addr));
+        connect ((sockaddr *)&addr, ipaddr.len());
+    }
+
+    void TcpConn::connect(const UdsAddr & udsaddr)
+    {
+        struct sockaddr_un addr = udsaddr.addr();
+
+        connect ((sockaddr *)&addr, udsaddr.len());
+    }
+
+    void TcpConn::connect(sockaddr *addr, size_t len)
+    {
+        int r = ::connect(fd(), addr, (socklen_t)len);
         if (r == -1)
         {
             if (errno != EINPROGRESS)
@@ -209,6 +229,17 @@ namespace tinynet
         return conn;
     }
 
+    std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const std::string sockpath)
+    {
+        return createConnection(loop, UdsAddr(sockpath));
+    }
+
+    std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const UdsAddr &addr)
+    {
+        auto conn = make_shared<TcpConn>(loop, addr);
+        return conn;
+    }
+
     std::shared_ptr<TcpConn> TcpConn::createAttacher(EventLoop &loop, int fd)
     {
         auto conn = make_shared<TcpConn>(loop);
@@ -234,9 +265,24 @@ namespace tinynet
 
     void TcpServer::bind(const Ip4Addr &addr)
     {
-        struct sockaddr_in sa = addr.pack();
+        struct sockaddr_in sa = addr.addr();
+        bind((sockaddr *) &sa, addr.len());
+    }
 
-        fatalif(::bind(fd(), (sockaddr *) & sa, sizeof(sa)) == -1);
+    void TcpServer::bind(const std::string &sockpath)
+    {
+        bind(UdsAddr(sockpath));
+    }
+
+    void TcpServer::bind(const UdsAddr &addr)
+    {
+        struct sockaddr_un sa = addr.addr();
+        bind((sockaddr *)&sa, addr.len());
+    }
+
+    void TcpServer::bind(sockaddr *addr, size_t len)
+    {
+        fatalif(::bind(fd(), addr, len) == -1);
 
         fatalif(listen(fd(), 100) == -1);
 
@@ -279,6 +325,13 @@ namespace tinynet
     {
         auto server = make_shared<TcpServer> (loop);
         server->bind(ip, port);
+        return server;
+    }
+
+    std::shared_ptr<TcpServer> TcpServer::startServr(EventLoop &loop, const std::string &sockpath)
+    {
+        auto server = make_shared<TcpServer> (loop);
+        server->bind(sockpath);
         return server;
     }
 
