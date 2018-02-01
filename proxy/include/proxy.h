@@ -28,6 +28,8 @@ namespace tinyrpc
     protected:
         void handleRead(tinynet::EventLoop & loop, tinynet::Event & ev);
 
+        void init(const Config & config);
+
     private:
         const Config            m_config;
         tinynet::EventLoop      m_loop;

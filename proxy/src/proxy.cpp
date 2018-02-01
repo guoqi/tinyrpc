@@ -20,4 +20,9 @@ namespace tinyrpc
     {
         // TODO
     }
+
+    void Proxy::init(const Config &config)
+    {
+        // TODO
+    }
 }

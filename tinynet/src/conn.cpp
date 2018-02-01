@@ -277,6 +277,7 @@ namespace tinynet
     void TcpServer::bind(const UdsAddr &addr)
     {
         struct sockaddr_un sa = addr.addr();
+        unlink(addr.path().c_str());    // remove if exists
         bind((sockaddr *)&sa, addr.len());
     }
 

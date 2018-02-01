@@ -17,6 +17,53 @@ namespace tinyrpc
     class ProxySection;
     class ServerSection;
 
+    class MainSection
+    {
+    public:
+        MainSection() = default;
+        ~MainSection() = default;
+
+        inline const std::string & host() const { return m_host; }
+        inline int port() const { return m_port; }
+        inline int maxConn() const { return m_maxConn; }
+
+    private:
+        std::string         m_host;
+        int                 m_port;
+        int                 m_maxConn;  // max connection num
+    };
+
+    class MasterSection
+    {
+        // TODO
+    };
+
+    class ProxySection
+    {
+    public:
+        ProxySection() = default;
+        ~ProxySection() = default;
+
+        const std::vector<std::string> & servers() const { return m_servers; }
+
+    private:
+        std::vector<std::string> m_servers;
+    };
+
+    class ServerSection
+    {
+    public:
+        explicit ServerSection(const std::string & servername): m_servername(servername) {}
+        ~ServerSection() = default;
+
+        std::string servername() { return m_servername; }
+        std::string udsname() { return m_udsname; }
+
+    private:
+        std::string             m_servername;
+        std::string             m_udsname;
+    };
+
     /**
      * Config consists of a main section and some server sections.
      * For example, here is a simple config format:
@@ -60,52 +107,6 @@ namespace tinyrpc
         std::map<std::string, ServerSection>    m_serevers;
     };
 
-    class MainSection
-    {
-    public:
-        MainSection() = default;
-        ~MainSection() = default;
-
-        inline const std::string & host() const { return m_host; }
-        inline int port() const { return m_port; }
-        inline int maxConn() const { return m_maxConn; }
-
-    private:
-        std::string         m_host;
-        int                 m_port;
-        int                 m_maxConn;  // max connection num
-    };
-
-    class MasterSection
-    {
-        // TODO
-    };
-
-    class ProxySection
-    {
-    public:
-        ProxySection() = default;
-        ~ProxySection() = default;
-
-        const std::vector & servers() const { return m_servers; }
-
-    private:
-        std::vector<std::string> m_servers;
-    };
-
-    class ServerSection
-    {
-    public:
-        explicit ServerSection(const std::string & servername): m_servername(servername) {}
-        ~ServerSection() = default;
-
-        std::string servername() { return m_servername; }
-        std::string udsname() { return m_udsname; }
-
-    private:
-        std::string             m_servername;
-        std::string             m_udsname;
-    };
 }
 
 #endif //RPCSERVER_CONFIG_H
