@@ -56,8 +56,8 @@ namespace tinyrpc
         explicit ServerSection(const std::string & servername): m_servername(servername) {}
         ~ServerSection() = default;
 
-        std::string servername() { return m_servername; }
-        std::string udsname() { return m_udsname; }
+        std::string servername() const { return m_servername; }
+        std::string udsname() const { return m_udsname; }
 
     private:
         std::string             m_servername;

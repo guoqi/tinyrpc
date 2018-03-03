@@ -8,6 +8,9 @@
 #include "util.h"
 #include "config.h"
 #include "event.h"
+#include "conn.h"
+#include "rpcconn.h"
+#include <vector>
 
 namespace tinyrpc
 {
@@ -20,6 +23,7 @@ namespace tinyrpc
         void stop() { m_loop.stop(); }
 
         // reload configuration
+        // only support reload servers configuration
         void reload(const Config & config);
 
         // dispatch request to a specific server process
@@ -31,8 +35,10 @@ namespace tinyrpc
         void init(const Config & config);
 
     private:
-        const Config            m_config;
-        tinynet::EventLoop      m_loop;
+        const Config                            m_config;
+        tinynet::EventLoop                      m_loop;
+        std::shared_ptr<tinynet::TcpServer>     m_proxy;
+        std::vector< std::shared_ptr<RpcConn> > m_servers;
     };
 }
 

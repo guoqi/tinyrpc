@@ -27,14 +27,14 @@ namespace tinynet
     }
 
     TcpConn::TcpConn(EventLoop &loop, const Ip4Addr &addr)
-        : TcpConn (loop)
+        : TcpConn (loop), m_addr(make_shared<Ip4Addr>(addr))
     {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         fatalif(fd == -1);
 
         net::setNonBlocking(fd);
         attach(fd);
-        connect(addr);
+        connect();
     }
 
     TcpConn::TcpConn(EventLoop & loop, const string & sockpath)
@@ -43,14 +43,14 @@ namespace tinynet
     }
 
     TcpConn::TcpConn(EventLoop &loop, const UdsAddr &addr)
-        : TcpConn(loop)
+        : TcpConn(loop), m_addr(make_shared<UdsAddr>(addr))
     {
         int fd = socket(AF_UNIX, SOCK_STREAM, 0);
         fatalif(fd == -1);
 
         net::setNonBlocking(fd);
         attach(fd);
-        connect(addr);
+        connect();
     }
 
     ssize_t TcpConn::recvall(std::string &msg) const
@@ -62,11 +62,9 @@ namespace tinynet
             len = recv(buffer, sizeof(buffer) - 1);
             if (len < 0)
             {
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {
-                    return -1; // recv socket buffer is empty !
-                }
-                fatalif(len == -1);
+                // When we need recv all data, it always ends with a EAGAIN error which means there is no data left.
+                // We just ommit the error in this case.
+                break;
             }
             msg.append(string(buffer, len));
         } while (len > 0);
@@ -76,7 +74,12 @@ namespace tinynet
 
     ssize_t TcpConn::recv(char *msg, size_t len) const
     {
-        return ::recv(fd(), msg, len, 0);
+        ssize_t ret = ::recv(fd(), msg, len, 0);
+        if (ret < 0 && ! (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            fatalif(ret == -1); // throw an exception when occurs other error except that socket buffer has been full.
+        }
+        return ret;
     }
 
     ssize_t TcpConn::sendall(const std::string &msg) const
@@ -87,11 +90,7 @@ namespace tinynet
             ssize_t len = send(msg.data() + total, msg.length() - total);
             if (len < 0)
             {
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {
-                    return -1;  // socket buffer is full
-                }
-                fatalif(len == -1);
+                break;  // There may be no left space (socket buffer) to send data, it is necessary to check whether all messages have been sent.
             }
             total += len;
         } while (total >= msg.length());
@@ -106,7 +105,12 @@ namespace tinynet
 
     ssize_t TcpConn::send(const char *msg, size_t len) const
     {
-        return ::send(fd(), msg, len, 0);
+        ssize_t ret = ::send(fd(), msg, len, 0);
+        if (ret < 0 && ! (errno == EAGAIN || errno == EWOULDBLOCK))
+        {
+            fatalif(ret == -1);
+        }
+        return ret;
     }
 
     shared_ptr<TcpConn> TcpConn::onRead(const TcpConnCallback &cb)
@@ -179,23 +183,9 @@ namespace tinynet
         return self();
     }
 
-    void TcpConn::connect(const Ip4Addr & ipaddr)
+    void TcpConn::connect()
     {
-        struct sockaddr_in addr = ipaddr.addr();
-
-        connect ((sockaddr *)&addr, ipaddr.len());
-    }
-
-    void TcpConn::connect(const UdsAddr & udsaddr)
-    {
-        struct sockaddr_un addr = udsaddr.addr();
-
-        connect ((sockaddr *)&addr, udsaddr.len());
-    }
-
-    void TcpConn::connect(sockaddr *addr, size_t len)
-    {
-        int r = ::connect(fd(), addr, (socklen_t)len);
+        int r = ::connect(fd(), m_addr->addr(), (socklen_t)m_addr->len());
         if (r == -1)
         {
             if (errno != EINPROGRESS)
@@ -216,6 +206,15 @@ namespace tinynet
         }
 
         return Ip4Addr(sa);
+    }
+
+    template<typename T>
+    const T TcpConn::addr() const
+    {
+        auto p = dynamic_cast<T> (m_addr.get());
+        panicif(p == nullptr, ERR_INVALID_TYPE, "invalid template type parmater.");
+
+        return *p;
     }
 
     std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const std::string ip, int port)
@@ -244,7 +243,6 @@ namespace tinynet
     {
         auto conn = make_shared<TcpConn>(loop);
         conn->attach(fd);
-        fflush(stdout);
         return conn;
     }
 
@@ -265,8 +263,7 @@ namespace tinynet
 
     void TcpServer::bind(const Ip4Addr &addr)
     {
-        struct sockaddr_in sa = addr.addr();
-        bind((sockaddr *) &sa, addr.len());
+        bind(addr.addr(), addr.len());
     }
 
     void TcpServer::bind(const std::string &sockpath)
@@ -276,9 +273,8 @@ namespace tinynet
 
     void TcpServer::bind(const UdsAddr &addr)
     {
-        struct sockaddr_un sa = addr.addr();
         unlink(addr.path().c_str());    // remove if exists
-        bind((sockaddr *)&sa, addr.len());
+        bind(addr.addr(), addr.len());
     }
 
     void TcpServer::bind(sockaddr *addr, size_t len)

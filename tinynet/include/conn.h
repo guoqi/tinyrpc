@@ -27,7 +27,6 @@ namespace tinynet
         WRITE     = 0x04,
     };
 
-
     using TcpConnCallback = std::function<void(std::shared_ptr<TcpConn> conn)>;
 
 
@@ -47,12 +46,7 @@ namespace tinynet
         static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const UdsAddr & addr);
         static std::shared_ptr<TcpConn> createAttacher(EventLoop & loop, int fd);
 
-        explicit TcpConn(EventLoop & loop);
-        TcpConn(EventLoop & loop, const std::string & ip, int port);
-        TcpConn(EventLoop & loop, const Ip4Addr & addr);
-        TcpConn(EventLoop & loop, const std::string & sockpath);
-        TcpConn(EventLoop & loop, const UdsAddr & addr);
-        virtual ~TcpConn() = default;
+        virtual ~TcpConn() { close(); }
 
         void closeRead() { m_event.readable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_RD); }
         void closeWrite() { m_event.writeable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_WR); }
@@ -65,6 +59,10 @@ namespace tinynet
         std::shared_ptr<TcpConn> onConnected(const TcpConnCallback & cb);
 
         Ip4Addr peername() const;
+        EventLoop & loop() { return m_loop; }
+
+        template<typename T>
+        const T addr() const;
 
     public:
         ssize_t send(const char * msg, size_t len) const;
@@ -78,11 +76,14 @@ namespace tinynet
         ssize_t recvall(std::string & msg) const;
 
     private:
-        void connect(const Ip4Addr & ipaddr);
+        explicit TcpConn(EventLoop & loop);
+        TcpConn(EventLoop & loop, const std::string & ip, int port);
+        TcpConn(EventLoop & loop, const Ip4Addr & addr);
+        TcpConn(EventLoop & loop, const std::string & sockpath);
+        TcpConn(EventLoop & loop, const UdsAddr & addr);
 
-        void connect(const UdsAddr & udsaddr);
-
-        void connect(sockaddr * addr, size_t len);
+    private:
+        void connect();
 
         std::shared_ptr<TcpConn> self() { return shared_from_this(); }
 
@@ -97,6 +98,8 @@ namespace tinynet
         TcpConnCallback m_readAction;
         TcpConnCallback m_writeAction;
         TcpConnCallback m_connectedAction;
+
+        std::shared_ptr<NetAddr> m_addr;
     };
 
     class TcpServer: public std::enable_shared_from_this<TcpServer>, public BaseConn

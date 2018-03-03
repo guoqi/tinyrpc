@@ -6,4 +6,8 @@ include_directories()
 
 add_library(base
         include/rpcconn.h
+        src/rpcconn.cpp
+        include/protocol.h
+        src/protocol.cpp
+        include/pool.h
 )

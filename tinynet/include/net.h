@@ -13,17 +13,27 @@
 
 namespace tinynet
 {
-    // ipv4 address class
-    class Ip4Addr
+    class NetAddr
     {
     public:
-        Ip4Addr(const std::string & ip, int port) : m_ip (ip), m_port(port), m_valid(true) {}
+        NetAddr() = default;
+        virtual ~NetAddr() = default;
+
+        virtual sockaddr * addr() const = 0;
+        virtual size_t len() const = 0;
+    };
+
+    // ipv4 address class
+    class Ip4Addr : public NetAddr
+    {
+    public:
+        Ip4Addr(const std::string & ip, int port);
         Ip4Addr(const sockaddr_in & saddr);
         Ip4Addr(): m_ip(""), m_port(0), m_valid(false) {}
         virtual ~Ip4Addr() = default;
 
-        sockaddr_in addr() const;
-        size_t len() const { return sizeof(sockaddr_in); }
+        virtual sockaddr * addr() const;
+        virtual size_t len() const { return sizeof(sockaddr_in); }
 
         inline std::string ip() const { return m_ip; }
         inline int port() const { return m_port; }
@@ -33,20 +43,22 @@ namespace tinynet
         std::string     m_ip;
         int             m_port;
         bool            m_valid;
+        sockaddr_in     m_saddr;
     };
 
-    class UdsAddr
+    class UdsAddr : public NetAddr
     {
     public:
-        explicit UdsAddr(const std::string & sockpath): m_sockpath(sockpath) {}
+        explicit UdsAddr(const std::string & sockpath);
 
-        sockaddr_un addr() const;
-        size_t len() const;
+        virtual sockaddr *addr() const;
+        virtual size_t len() const;
 
         inline std::string path() const { return m_sockpath; }
 
     private:
         std::string     m_sockpath;
+        sockaddr_un     m_saddr;
     };
 
     namespace net
