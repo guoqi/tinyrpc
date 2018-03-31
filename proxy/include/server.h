@@ -69,7 +69,7 @@ namespace tinyrpc
 
     private:
         static std::map< uint64_t, std::string >               m_services;
-        static std::map< uint64_t, size_t >                    m_svc2srv;
+        static std::map< uint64_t, size_t >                    m_svc2svr;
         static std::vector< std::shared_ptr<Server> >          m_servers;
         static uint64_t                                        m_count;
     };

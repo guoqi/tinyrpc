@@ -49,7 +49,7 @@ namespace tinyrpc
         for (auto & it : server->m_services)
         {
             m_services[m_count] = it.first;
-            m_svc2srv[m_count] = idx;
+            m_svc2svr[m_count] = idx;
             m_count++;
         }
     }
@@ -61,12 +61,12 @@ namespace tinyrpc
             return std::pair();
         }
 
-        if (m_svc2srv.find(sid) == m_svc2srv.end())
+        if (m_svc2svr.find(sid) == m_svc2svr.end())
         {
             return std::pair();
         }
 
-        return std::make_pair(m_servers[m_svc2srv.at(sid)], m_services.at(sid));
+        return std::make_pair(m_servers[m_svc2svr.at(sid)], m_services.at(sid));
     }
 
     App::App(int max_client):
