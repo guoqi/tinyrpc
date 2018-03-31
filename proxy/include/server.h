@@ -15,6 +15,10 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <vector>
+
+#define DECLARE_SERVER_CLASS(server) \
+    ServerContext<server> __context##server
 
 namespace tinyrpc
 {
@@ -22,7 +26,7 @@ namespace tinyrpc
 
     class App;
 
-    class Server: public util::noncopyable, public std::enable_shared_from_this, public App
+    class Server: public util::noncopyable, public std::enable_shared_from_this
     {
     public:
         friend class ServerPool;
@@ -31,6 +35,9 @@ namespace tinyrpc
 
         virtual void initialize() = 0;
         virtual void destory() = 0;
+
+        void initApp(int max_client) { m_app = std::make_shared<App>(max_client); m_app->start(); }
+        void stopApp() { m_app->stop(); }
 
         std::string name() const { return m_name; }
 
@@ -43,6 +50,7 @@ namespace tinyrpc
     private:
         const std::string                   m_name;
         std::map<std::string, ServiceFunc>  m_services;
+        std::shared_ptr<App>                m_app;
     };
 
     class ServerPool: public util::noncopyable
@@ -54,12 +62,15 @@ namespace tinyrpc
 
         static std::pair< std::shared_ptr<Server>, std::string > locate(uint64_t sid);
 
+        static const std::vector< std::shared_ptr<Server> > servers() { return m_servers; }
+
     private:
         ServerPool() = default;
 
     private:
         static std::map< uint64_t, std::string >               m_services;
-        static std::map< uint64_t, std::shared_ptr<Server> >   m_servers;
+        static std::map< uint64_t, size_t >                    m_svc2srv;
+        static std::vector< std::shared_ptr<Server> >          m_servers;
         static uint64_t                                        m_count;
     };
 
@@ -73,12 +84,10 @@ namespace tinyrpc
             m_server = std::make_shared<T>();
             ServerPool::add(m_server);
             m_server->initialize();
-            m_server->start();
         }
 
         virtual ~ServerContext()
         {
-            m_server->stop();
             m_server->destory();
         }
 
@@ -86,7 +95,7 @@ namespace tinyrpc
         std::shared_ptr<T>  m_server;
     };
 
-    class App
+    class App: public util::noncopyable
     {
     public:
         App(int max_client);

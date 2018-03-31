@@ -21,7 +21,7 @@ namespace tinyrpc
 
         auto func = m_services[service];
 
-        int ret = makeClient([func, client, msg](){
+        int ret = m_app->makeClient([func, client, msg](){
             Message retval;
             func(msg, retval);
             Server::clientResp(client, retval);
@@ -44,10 +44,12 @@ namespace tinyrpc
 
     void ServerPool::add(std::shared_ptr<Server> server)
     {
+        m_servers.push_back(server);
+        auto idx = m_servers.size() - 1; // server's index
         for (auto & it : server->m_services)
         {
             m_services[m_count] = it.first;
-            m_servers[m_count] = server;
+            m_svc2srv[m_count] = idx;
             m_count++;
         }
     }
@@ -59,12 +61,12 @@ namespace tinyrpc
             return std::pair();
         }
 
-        if (m_servers.find(sid) == m_servers.end())
+        if (m_svc2srv.find(sid) == m_svc2srv.end())
         {
             return std::pair();
         }
 
-        return std::make_pair(m_servers.at(sid), m_services.at(sid));
+        return std::make_pair(m_servers[m_svc2srv.at(sid)], m_services.at(sid));
     }
 
     App::App(int max_client):

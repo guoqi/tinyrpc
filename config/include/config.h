@@ -80,7 +80,6 @@ namespace tinyrpc
      *    "proxy": {
      *        "threads":  <num>
      *        "max_connection": <num>
-     *        "server_default_threads": <num>
      *    },
      *
      *    "server_1": {

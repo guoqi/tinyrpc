@@ -11,13 +11,32 @@ using namespace tinynet;
 
 namespace tinyrpc
 {
-    Proxy::Proxy(const Config &config, int fd)
+    Proxy::Proxy(const Config &config)
         : m_loop(config.proxy().maxConn()),
-          m_client_pool(config.proxy().maxConn())
+          m_client_pool((size_t)config.proxy().maxConn()),
+          m_config(config)
     {
-        m_proxy = TcpConn::createAttacher(m_loop, fd);
+        m_proxy = TcpServer::startServer(m_loop, config.main().host(), config.main().port());
         m_proxy->onRead(std::bind(Proxy::handleAccept, this));
         m_proxy->readwrite(true, false);
+    }
+
+    void Proxy::start()
+    {
+        for (auto & const server : ServerPool::servers())
+        {
+            server->initApp(m_config.server(server->name()).threads());
+        }
+        m_loop.start();
+    }
+
+    void Proxy::stop()
+    {
+        for (auto & const server : ServerPool::servers())
+        {
+            server->stopApp();
+        }
+        m_loop.stop();
     }
 
     void Proxy::dispatch(std::shared_ptr<TcpConn> & client, const Message & msg)

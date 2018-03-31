@@ -18,10 +18,10 @@ namespace tinyrpc
     class Proxy : util::noncopyable
     {
     public:
-        Proxy(const Config & config, int fd);
+        explicit Proxy(const Config & config);
 
-        void start() { m_loop.start(); }
-        void stop() { m_loop.stop(); }
+        void start();
+        void stop();
 
         // dispatch request to a specific server process
         void dispatch(std::shared_ptr<tinynet::TcpConn> & client, const Message & msg);
@@ -39,6 +39,7 @@ namespace tinyrpc
         std::shared_ptr<tinynet::TcpConn>       m_proxy;
         Pool< std::shared_ptr<
                 tinynet::TcpConn> >             m_client_pool;
+        Config                                  m_config;
     };
 }
 
