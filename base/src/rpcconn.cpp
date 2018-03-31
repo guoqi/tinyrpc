@@ -34,7 +34,7 @@ namespace tinyrpc
     RpcConn & RpcConn::send(const Message &msg)
     {
         m_conn->onWrite([](shared_ptr<TcpConn> conn){
-            conn->sendall(msg.dump());
+            msg.sendBy(conn);
             conn->readwrite(true, false);
         });
 
@@ -44,18 +44,7 @@ namespace tinyrpc
     RpcConn & RpcConn::recv(const std::function<void(Message & msg)> & cb)
     {
         m_conn->onRead([](shared_ptr<TcpConn> conn){
-            char buffer[4096] = {0};
-            ssize_t len = 0;
-            Message::Parser parser;
-            Message msg;
-            do
-            {
-                len = conn->recv(buffer, sizeof(buffer));
-                if (len > 0)
-                    parser(buffer, msg);
-            } while (len > 0 && ! parser);
-
-            panicif(! parser, ERR_INVALID_MESSAGE, "incomplete message packet");
+            Message msg = Message::recvBy(conn);
 
             cb(msg);
 
@@ -111,5 +100,4 @@ namespace tinyrpc
     {
         init();
     }
-
 }

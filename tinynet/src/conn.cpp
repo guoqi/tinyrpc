@@ -325,7 +325,7 @@ namespace tinynet
         return server;
     }
 
-    std::shared_ptr<TcpServer> TcpServer::startServr(EventLoop &loop, const std::string &sockpath)
+    std::shared_ptr<TcpServer> TcpServer::startServer(EventLoop &loop, const std::string &sockpath)
     {
         auto server = make_shared<TcpServer> (loop);
         server->bind(sockpath);

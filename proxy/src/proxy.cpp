@@ -3,36 +3,89 @@
 //
 
 #include "proxy.h"
+#include "server.h"
+#include "thread.h"
 
 using namespace std;
 using namespace tinynet;
 
 namespace tinyrpc
 {
-    Proxy::Proxy(const Config &config)
-        : m_config(config), m_loop(m_config.main().maxConn())
+    Proxy::Proxy(const Config &config, int fd)
+        : m_loop(config.proxy().maxConn()),
+          m_client_pool(config.proxy().maxConn())
     {
-        m_proxy = TcpServer::startServer(m_loop, m_config.main().host(), m_config.main().port());
-
-        init(config);
+        m_proxy = TcpConn::createAttacher(m_loop, fd);
+        m_proxy->onRead(std::bind(Proxy::handleAccept, this));
+        m_proxy->readwrite(true, false);
     }
 
-    void Proxy::reload(const Config &config)
+    void Proxy::dispatch(std::shared_ptr<TcpConn> & client, const Message & msg)
     {
-        init(config);
-    }
-
-    void Proxy::dispatch(const std::string servername, int fd)
-    {
-        // TODO
-    }
-
-    void Proxy::init(const Config &config)
-    {
-        for (auto const & server : m_config.proxy().servers())
+        switch (msg.protocol())
         {
-            auto rpcconn = make_shared<RpcConn>(m_loop, UdsAddr(m_config.server(server).udsname()));
-            m_servers.push_back(rpcconn);
+            case HEARTBEAT:
+                Message retval;
+                retval.protocol(HEARTBEAT);
+                retval.seqno(msg.seqno() + 1);
+                clientOk(client, retval);
+                break;
+            case HANDSHAKE:
+                // TODO
+                break;
+            case MESSAGE:
+                auto dst = ServerPool::locate(msg.dst());
+                dst.first->handleService(dst.second, msg);
+                break;
+            default:
+                client->close();
+                break;
         }
+    }
+
+    void Proxy::handleAccept(std::shared_ptr<tinynet::TcpConn> conn)
+    {
+        int cfd;
+        conn->recv((char *)&cfd, sizeof(cfd)); // read client fd
+
+        handleClient(cfd);
+    }
+
+    void Proxy::handleClient(int cfd)
+    {
+        auto client = TcpConn::createAttacher(m_loop, cfd);
+
+        if (m_client_pool.add(client) == -1)
+        {
+            string errmsg = "connection pool is full";
+            error("%s", errmsg.c_str());
+            clientError(client, errmsg);
+            return;
+        }
+
+        client->onRead([](shared_ptr<TcpConn> c){
+            Message msg = Message::recvBy(client);
+            dispatch(c, msg);
+        });
+    }
+
+    void Proxy::clientError(std::shared_ptr<tinynet::TcpConn> &client, const std::string & errmsg)
+    {
+        client->onWrite([errmsg](shared_ptr<TcpConn> c){
+            Message msg;
+            msg.data(errmsg);
+            msg.sendBy(c);
+            c->close();
+        });
+        client->readwrite(false, true);
+    }
+
+    void Proxy::clientOk(std::shared_ptr<tinynet::TcpConn> & client, const Message &retval)
+    {
+        client->onWrite([retval](shared_ptr<TcpConn> c){
+            retval.sendBy(c);
+            c->readwrite(true, false);
+        });
+        client->readwrite(false, true);
     }
 }

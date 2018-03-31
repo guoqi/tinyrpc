@@ -51,6 +51,7 @@ namespace tinynet
         void closeRead() { m_event.readable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_RD); }
         void closeWrite() { m_event.writeable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_WR); }
         void close() { m_loop.remove(m_event); ::close(m_event.fd()); }
+        void detach() { m_loop.remove(m_event); }
 
         void readwrite(bool read, bool write) { m_event.readable(read); m_event.writeable(write); m_loop.alter(m_event); }
 
@@ -63,6 +64,10 @@ namespace tinynet
 
         template<typename T>
         const T addr() const;
+
+        inline int fd() const { return m_event.fd(); }
+
+        void attach(int fd) { m_event.attach(fd); }
 
     public:
         ssize_t send(const char * msg, size_t len) const;
@@ -87,10 +92,6 @@ namespace tinynet
 
         std::shared_ptr<TcpConn> self() { return shared_from_this(); }
 
-        void attach(int fd) { m_event.attach(fd); }
-
-        inline int fd() const { return m_event.fd(); }
-
     private:
         Event           m_event;
         EventLoop &     m_loop;
@@ -106,7 +107,7 @@ namespace tinynet
     {
     public:
         static std::shared_ptr<TcpServer> startServer(EventLoop & loop, const std::string & ip, int port);
-        static std::shared_ptr<TcpServer> startServr(EventLoop & loop, const std::string & sockpath);
+        static std::shared_ptr<TcpServer> startServer(EventLoop & loop, const std::string & sockpath);
 
         TcpServer(EventLoop & loop);
 

@@ -11,6 +11,8 @@ include_directories(
 set(SOURCE_FILES
         include/proxy.h
         src/proxy.cpp
+        include/server.h
+        src/server.cpp
         src/main.cpp
         )
 

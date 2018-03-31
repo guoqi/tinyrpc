@@ -25,12 +25,10 @@ namespace tinyrpc
 
         inline const std::string & host() const { return m_host; }
         inline int port() const { return m_port; }
-        inline int maxConn() const { return m_maxConn; }
 
     private:
         std::string         m_host;
         int                 m_port;
-        int                 m_maxConn;  // max connection num
     };
 
     class MasterSection
@@ -44,24 +42,28 @@ namespace tinyrpc
         ProxySection() = default;
         ~ProxySection() = default;
 
-        const std::vector<std::string> & servers() const { return m_servers; }
+        inline int threads() const { return m_threads; }
+        inline int server_default_threads() const { return m_server_default_threads; }
+        inline int maxConn() const { return m_maxConn; }
 
     private:
-        std::vector<std::string> m_servers;
+        int             m_threads;
+        int             m_maxConn;  // max connection num
+        int             m_server_default_threads;
     };
 
     class ServerSection
     {
     public:
-        explicit ServerSection(const std::string & servername): m_servername(servername) {}
+        explicit ServerSection(std::string servername): m_servername(std::move(servername)), m_threads(-1) {}
         ~ServerSection() = default;
 
         std::string servername() const { return m_servername; }
-        std::string udsname() const { return m_udsname; }
+        int threads() const { return m_threads; }
 
     private:
         std::string             m_servername;
-        std::string             m_udsname;
+        int                     m_threads;
     };
 
     /**
@@ -70,22 +72,23 @@ namespace tinyrpc
      * {
      *    "main": {
      *        "listen": <[host:]port>,    # host is 0.0.0.0 by default
-     *        "max_connection": <num>
      *    },
      *
      *    "master": {
      *    },
      *
      *    "proxy": {
-     *        "servers": [server_name list]
+     *        "threads":  <num>
+     *        "max_connection": <num>
+     *        "server_default_threads": <num>
      *    },
      *
      *    "server_1": {
-     *        "uds_name": <unix domain socket name>
+     *        "threads": <num>
      *    },
      *
      *    "server_2": {
-     *        "uds_name": <unix domain socket name>
+     *        "threads": <num>
      *    }
      * }
      */

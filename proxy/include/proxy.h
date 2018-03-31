@@ -10,6 +10,7 @@
 #include "event.h"
 #include "conn.h"
 #include "rpcconn.h"
+#include "pool.h"
 #include <vector>
 
 namespace tinyrpc
@@ -17,28 +18,27 @@ namespace tinyrpc
     class Proxy : util::noncopyable
     {
     public:
-        Proxy(const Config & config);
+        Proxy(const Config & config, int fd);
 
         void start() { m_loop.start(); }
         void stop() { m_loop.stop(); }
 
-        // reload configuration
-        // only support reload servers configuration
-        void reload(const Config & config);
-
         // dispatch request to a specific server process
-        void dispatch(const std::string servername, int fd);
+        void dispatch(std::shared_ptr<tinynet::TcpConn> & client, const Message & msg);
 
     protected:
-        void handleRead(tinynet::EventLoop & loop, tinynet::Event & ev);
+        void handleAccept(std::shared_ptr<tinynet::TcpConn> conn);
 
-        void init(const Config & config);
+        void handleClient(int cfd);
+
+        void clientError(std::shared_ptr<tinynet::TcpConn> & client, const std::string & errmsg);
+        void clientOk(std::shared_ptr<tinynet::TcpConn> & client, const Message & retval);
 
     private:
-        const Config                            m_config;
         tinynet::EventLoop                      m_loop;
-        std::shared_ptr<tinynet::TcpServer>     m_proxy;
-        std::vector< std::shared_ptr<RpcConn> > m_servers;
+        std::shared_ptr<tinynet::TcpConn>       m_proxy;
+        Pool< std::shared_ptr<
+                tinynet::TcpConn> >             m_client_pool;
     };
 }
 

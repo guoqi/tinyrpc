@@ -10,4 +10,6 @@ add_library(base
         include/protocol.h
         src/protocol.cpp
         include/pool.h
+        include/thread.h
+        src/thread.cpp
 )
