@@ -10,4 +10,6 @@ add_library(base OBJECT
         include/pool.h
         include/thread.h
         src/thread.cpp
+        include/config.h
+        src/config.cpp
 )

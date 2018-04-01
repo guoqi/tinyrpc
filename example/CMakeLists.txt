@@ -8,7 +8,6 @@ include_directories(
         ${TOP_PROJECT_DIR}tinynet/include
         ${TOP_PROJECT_DIR}tinyrpc/include
         ${TOP_PROJECT_DIR}base/include
-        ${TOP_PROJECT_DIR}config/include
 )
 
 set(SOURCE_FILES
