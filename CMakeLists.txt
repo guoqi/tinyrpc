@@ -12,5 +12,4 @@ include_directories(
 add_subdirectory(tinynet)
 add_subdirectory(config)
 add_subdirectory(base)
-
-add_subdirectory(proxy bin)
+add_subdirectory(tinyrpc)
