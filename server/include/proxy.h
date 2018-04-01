@@ -9,7 +9,7 @@
 #include "config.h"
 #include "event.h"
 #include "conn.h"
-#include "rpcconn.h"
+#include "protocol.h"
 #include "pool.h"
 #include <vector>
 

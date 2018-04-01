@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g")
 include_directories(
     ${PROJECT_SOURCE_DIR}/tinynet/include
     ${PROJECT_SOURCE_DIR}/base/include
-    ${PROJECT_SOURCE_DIR}/tinyrpc/include
+    ${PROJECT_SOURCE_DIR}/server/include
 )
 
 set(SOURCE_FILES
@@ -16,4 +16,4 @@ set(SOURCE_FILES
         src/main.cpp
         )
 
-add_library(rpccore OBJECT ${SOURCE_FILES})
+add_library(rpc_server OBJECT ${SOURCE_FILES})

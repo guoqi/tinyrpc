@@ -6,8 +6,8 @@ set(TOP_PROJECT_DIR "${PROJECT_SOURCE_DIR}/../")
 
 include_directories(
         ${TOP_PROJECT_DIR}tinynet/include
-        ${TOP_PROJECT_DIR}tinyrpc/include
         ${TOP_PROJECT_DIR}base/include
+        ${TOP_PROJECT_DIR}server/include
 )
 
 set(SOURCE_FILES
@@ -22,5 +22,5 @@ add_executable(echosvr echosvr.cpp ${TINYNET})
 add_executable(echocli echocli.cpp ${TINYNET})
 add_executable(httpclient httpclient.cpp ${TINYNET})
 add_executable(sigdemo sigdemo.cpp ${TINYNET})
-add_executable(rpcsvr ${SOURCE_FILES})
-target_link_libraries(rpcsvr tinyrpc pthread)
+add_executable(rpcsvr_demo ${SOURCE_FILES})
+target_link_libraries(rpcsvr_demo rpcsvr pthread)

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <rapidjson/document.h>
 
 namespace tinyrpc
 {
@@ -19,6 +20,7 @@ namespace tinyrpc
 
     class MainSection
     {
+        friend class Config;
     public:
         MainSection() = default;
         ~MainSection() = default;
@@ -33,11 +35,13 @@ namespace tinyrpc
 
     class MasterSection
     {
+        friend class Config;
         // TODO
     };
 
     class ProxySection
     {
+        friend class Config;
     public:
         ProxySection() = default;
         ~ProxySection() = default;
@@ -54,8 +58,10 @@ namespace tinyrpc
 
     class ServerSection
     {
+        friend class Config;
     public:
-        explicit ServerSection(std::string servername): m_servername(std::move(servername)), m_threads(-1) {}
+        ServerSection(): m_servername(""), m_threads(-1) {}
+        ServerSection(std::string servername, int threads): m_servername(std::move(servername)), m_threads(threads) {}
         ~ServerSection() = default;
 
         std::string servername() const { return m_servername; }
@@ -94,19 +100,25 @@ namespace tinyrpc
     class Config
     {
     public:
-        Config(const std::string filename);
+        Config(const std::string & filename);
         ~Config() = default;
 
         const MainSection & main() const { return m_main; }
         const MasterSection & master() const { return m_master; }
         const ProxySection & proxy() const { return m_proxy; }
-        const ServerSection & server(const std::string servername) const { return m_serevers.at(servername); }
+        const ServerSection & server(const std::string servername) const { return m_servers.at(servername); }
+
+    protected:
+        void loadMainSection(rapidjson::Document & d);
+        void loadMasterSection(rapidjson::Document & d);
+        void loadProxySection(rapidjson::Document & d);
+        void loadServerSection(rapidjson::Document & d);
 
     private:
         MainSection                             m_main;
         MasterSection                           m_master;
         ProxySection                            m_proxy;
-        std::map<std::string, ServerSection>    m_serevers;
+        std::map<std::string, ServerSection>    m_servers;
     };
 
 }

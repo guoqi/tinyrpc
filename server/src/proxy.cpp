@@ -25,7 +25,14 @@ namespace tinyrpc
     {
         for (const auto & server : ServerPool::servers())
         {
-            server->initApp(m_config.server(server->name()).threads());
+            int threads = 0;
+            try {
+                threads = m_config.server(server->name()).threads();
+            } catch (std::out_of_range & e) {
+                threads = m_config.proxy().threads();
+            }
+
+            server->initApp(threads);
         }
         m_loop.start();
     }
