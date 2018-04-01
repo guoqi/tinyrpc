@@ -8,6 +8,9 @@ class HelloSvr : public Server
 public:
     HelloSvr();
 
+    void initialize();
+    void destory();
+
     void hello(const Message & msg, Message & retval);
 };
 

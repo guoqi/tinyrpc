@@ -11,6 +11,13 @@ using namespace tinynet;
 
 namespace tinyrpc
 {
+    // static member variable definition
+    std::map< uint64_t, std::string >               ServerPool::m_services;
+    std::map< uint64_t, size_t >                    ServerPool::m_svc2svr;
+    std::vector< std::shared_ptr<Server> >          ServerPool::m_servers;
+    uint64_t                                        ServerPool::m_count;
+
+
     void Server::initApp(int max_client)
     {
         m_app = std::make_shared<App>(max_client);
