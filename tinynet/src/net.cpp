@@ -10,7 +10,7 @@ namespace tinynet
     Ip4Addr::Ip4Addr(const std::string &ip, int port)
         : m_ip (ip), m_port(port), m_valid(true)
     {
-        memset(&m_saddr, 0, sizeof(addr));
+        memset(&m_saddr, 0, sizeof(m_saddr));
         m_saddr.sin_family = AF_INET;
         m_saddr.sin_port = htons((uint16_t)m_port);
         m_saddr.sin_addr.s_addr = inet_addr(m_ip.c_str());
@@ -24,7 +24,7 @@ namespace tinynet
         m_valid = true;
     }
 
-    virtual sockaddr * Ip4Addr::addr() const
+    sockaddr * Ip4Addr::addr() const
     {
         return (sockaddr *)&m_saddr;
     }
@@ -32,12 +32,12 @@ namespace tinynet
     UdsAddr::UdsAddr(const std::string &sockpath)
         : m_sockpath(sockpath)
     {
-        memset(&m_saddr, 0, sizeof(addr));
+        memset(&m_saddr, 0, sizeof(m_saddr));
         m_saddr.sun_family = AF_UNIX;
-        strncpy(m_saddr.sun_path, m_sockpath.c_str(), sizeof(addr.sun_path) - 1);
+        strncpy(m_saddr.sun_path, m_sockpath.c_str(), sizeof(m_saddr.sun_path) - 1);
     }
 
-    virtual sockaddr * UdsAddr::addr() const
+    sockaddr * UdsAddr::addr() const
     {
         return (sockaddr *)&m_saddr;
     }

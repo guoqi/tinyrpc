@@ -33,7 +33,7 @@ namespace tinyrpc
         pthread_join(m_thread, nullptr);
     }
 
-    static void* Thread::threadFunc(void * param)
+    void* Thread::threadFunc(void * param)
     {
         auto self = (Thread *)param;
         (self->m_func)();

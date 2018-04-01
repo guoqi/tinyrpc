@@ -11,9 +11,20 @@ using namespace tinynet;
 
 namespace tinyrpc
 {
+    void Server::initApp(int max_client)
+    {
+        m_app = std::make_shared<App>(max_client);
+        m_app->start();
+    }
+
+    void Server::stopApp()
+    {
+        m_app->stop();
+    }
+
     void Server::handleService(const std::string &service, const Message &msg)
     {
-        shared_ptr<TcpConn> client = TcpConn::createAttacher(m_loop, msg.clientfd());
+        shared_ptr<TcpConn> client = TcpConn::createAttacher(m_app->loop(), msg.clientfd());
         if (m_services.find(service) == m_services.end())
         {
             // TODO no such service. response to client and close connection
@@ -58,12 +69,12 @@ namespace tinyrpc
     {
         if (m_services.find(sid) == m_services.end())
         {
-            return std::pair();
+            return std::pair< std::shared_ptr<Server>, std::string> ();
         }
 
         if (m_svc2svr.find(sid) == m_svc2svr.end())
         {
-            return std::pair();
+            return std::pair< std::shared_ptr<Server>, std::string> ();
         }
 
         return std::make_pair(m_servers[m_svc2svr.at(sid)], m_services.at(sid));
@@ -76,7 +87,7 @@ namespace tinyrpc
 
     void App::start()
     {
-        m_main_thread = Thread::create([](){
+        m_main_thread = Thread::create([this](){
             m_loop.start();
         });
     }

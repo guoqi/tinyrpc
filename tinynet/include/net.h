@@ -50,6 +50,7 @@ namespace tinynet
     {
     public:
         explicit UdsAddr(const std::string & sockpath);
+        virtual ~UdsAddr() = default;
 
         virtual sockaddr *addr() const;
         virtual size_t len() const;

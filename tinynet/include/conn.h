@@ -80,7 +80,7 @@ namespace tinynet
 
         ssize_t recvall(std::string & msg) const;
 
-    private:
+    public:
         explicit TcpConn(EventLoop & loop);
         TcpConn(EventLoop & loop, const std::string & ip, int port);
         TcpConn(EventLoop & loop, const Ip4Addr & addr);

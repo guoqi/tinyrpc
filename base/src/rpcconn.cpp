@@ -8,6 +8,7 @@
 #include <memory>
 
 using namespace std;
+using namespace std::placeholders;
 using namespace tinynet;
 
 const static int HEARTBEAT_TIME = 1000;  // send heartbeat packet every one second
@@ -33,7 +34,7 @@ namespace tinyrpc
 
     RpcConn & RpcConn::send(const Message &msg)
     {
-        m_conn->onWrite([](shared_ptr<TcpConn> conn){
+        m_conn->onWrite([msg](shared_ptr<TcpConn> conn){
             msg.sendBy(conn);
             conn->readwrite(true, false);
         });
@@ -43,7 +44,7 @@ namespace tinyrpc
 
     RpcConn & RpcConn::recv(const std::function<void(Message & msg)> & cb)
     {
-        m_conn->onRead([](shared_ptr<TcpConn> conn){
+        m_conn->onRead([cb](shared_ptr<TcpConn> conn){
             Message msg = Message::recvBy(conn);
 
             cb(msg);
@@ -57,12 +58,12 @@ namespace tinyrpc
     void RpcConn::init()
     {
         // add heartbeat event
-        m_conn->loop().runAfter(0, std::bind(RpcConn::handleHeartBeat, this), HEARTBEAT_TIME);
+        m_conn->loop().runAfter(0, std::bind(&RpcConn::handleHeartBeat, this, _1), HEARTBEAT_TIME);
     }
 
     void RpcConn::connect()
     {
-        m_conn->onConnected(std::bind(RpcConn::handleConnected, this));
+        m_conn->onConnected(std::bind(&RpcConn::handleConnected, this, _1));
     }
 
     void RpcConn::reconnect()

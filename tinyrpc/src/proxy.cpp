@@ -8,6 +8,7 @@
 
 using namespace std;
 using namespace tinynet;
+using namespace std::placeholders;
 
 namespace tinyrpc
 {
@@ -17,13 +18,12 @@ namespace tinyrpc
           m_config(config)
     {
         m_proxy = TcpServer::startServer(m_loop, config.main().host(), config.main().port());
-        m_proxy->onRead(std::bind(Proxy::handleAccept, this));
-        m_proxy->readwrite(true, false);
+        m_proxy->onClientAccepted(std::bind(&Proxy::handleAccept, this, _1));
     }
 
     void Proxy::start()
     {
-        for (auto & const server : ServerPool::servers())
+        for (const auto & server : ServerPool::servers())
         {
             server->initApp(m_config.server(server->name()).threads());
         }
@@ -32,7 +32,7 @@ namespace tinyrpc
 
     void Proxy::stop()
     {
-        for (auto & const server : ServerPool::servers())
+        for (const auto & server : ServerPool::servers())
         {
             server->stopApp();
         }
@@ -43,37 +43,36 @@ namespace tinyrpc
     {
         switch (msg.protocol())
         {
-            case HEARTBEAT:
+            case HEARTBEAT: {
                 Message retval;
                 retval.protocol(HEARTBEAT);
                 retval.seqno(msg.seqno() + 1);
                 clientOk(client, retval);
                 break;
+            }
             case HANDSHAKE:
                 // TODO
                 break;
-            case MESSAGE:
+            case MESSAGE: {
                 auto dst = ServerPool::locate(msg.dst());
-                dst.first->handleService(dst.second, msg);
+                if (! dst.first)
+                {
+                    dst.first->handleService(dst.second, msg);
+                }
+                else
+                {
+                    clientError(client, "not found destination service");
+                }
                 break;
+            }
             default:
                 client->close();
                 break;
         }
     }
 
-    void Proxy::handleAccept(std::shared_ptr<tinynet::TcpConn> conn)
+    void Proxy::handleAccept(std::shared_ptr<tinynet::TcpConn> client)
     {
-        int cfd;
-        conn->recv((char *)&cfd, sizeof(cfd)); // read client fd
-
-        handleClient(cfd);
-    }
-
-    void Proxy::handleClient(int cfd)
-    {
-        auto client = TcpConn::createAttacher(m_loop, cfd);
-
         if (m_client_pool.add(client) == -1)
         {
             string errmsg = "connection pool is full";
@@ -82,9 +81,9 @@ namespace tinyrpc
             return;
         }
 
-        client->onRead([](shared_ptr<TcpConn> c){
-            Message msg = Message::recvBy(client);
-            dispatch(c, msg);
+        client->onRead([this](shared_ptr<TcpConn> c){
+            Message msg = Message::recvBy(c);
+            this->dispatch(c, msg);
         });
     }
 

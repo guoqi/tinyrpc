@@ -189,6 +189,7 @@ namespace tinyrpc
 
     std::shared_ptr<ExtendArea> ExtendArea::parse(const std::string &src)
     {
+        return make_shared<ExtendArea>();
     }
 
 

@@ -6,7 +6,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/tinynet/include
 )
 
-add_library(tinynet
+add_library(tinynet OBJECT
         include/channel.h
         include/conn.h
         include/event.h

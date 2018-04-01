@@ -26,7 +26,7 @@ namespace tinyrpc
 
     class App;
 
-    class Server: public util::noncopyable, public std::enable_shared_from_this
+    class Server: public util::noncopyable, public std::enable_shared_from_this<Server>
     {
     public:
         friend class ServerPool;
@@ -36,8 +36,8 @@ namespace tinyrpc
         virtual void initialize() = 0;
         virtual void destory() = 0;
 
-        void initApp(int max_client) { m_app = std::make_shared<App>(max_client); m_app->start(); }
-        void stopApp() { m_app->stop(); }
+        void initApp(int max_client);
+        void stopApp();
 
         std::string name() const { return m_name; }
 
@@ -104,6 +104,8 @@ namespace tinyrpc
         void start();
         void stop();
         int makeClient(const ThreadFunc & func);
+
+        tinynet::EventLoop & loop() { return m_loop; }
 
     protected:
         int                                     m_max_client;

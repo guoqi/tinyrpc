@@ -27,16 +27,14 @@ namespace tinyrpc
         void dispatch(std::shared_ptr<tinynet::TcpConn> & client, const Message & msg);
 
     protected:
-        void handleAccept(std::shared_ptr<tinynet::TcpConn> conn);
-
-        void handleClient(int cfd);
+        void handleAccept(std::shared_ptr<tinynet::TcpConn> client);
 
         void clientError(std::shared_ptr<tinynet::TcpConn> & client, const std::string & errmsg);
         void clientOk(std::shared_ptr<tinynet::TcpConn> & client, const Message & retval);
 
     private:
         tinynet::EventLoop                      m_loop;
-        std::shared_ptr<tinynet::TcpConn>       m_proxy;
+        std::shared_ptr<tinynet::TcpServer>     m_proxy;
         Pool< std::shared_ptr<
                 tinynet::TcpConn> >             m_client_pool;
         Config                                  m_config;

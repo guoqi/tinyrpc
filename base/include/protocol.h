@@ -24,6 +24,8 @@ namespace tinyrpc
     public:
         static std::shared_ptr<ExtendArea> parse(const std::string & src);
 
+        ExtendArea() = default;
+
         void load(const std::string & src) {}
         void load(const char * src) {}
         const std::string & dump() {}
@@ -55,9 +57,9 @@ namespace tinyrpc
         virtual ~Message() = default;
 
         Message(const Message & message)
-            : m_protocol(message.protocol), m_data(message.m_data), m_datalen(0), m_version(1)
+            : m_protocol(message.protocol()), m_data(message.m_data), m_datalen(0), m_version(1)
         {
-            m_extend = make_shared<ExtendArea> (message.m_extend);
+            m_extend = std::move(message.m_extend);
         }
 
         static Message recvBy(const std::shared_ptr<tinynet::TcpConn> & conn);
@@ -186,7 +188,7 @@ namespace tinyrpc
 
             int operator() (const std::string & src, ProxyProto & pp);
 
-            operator bool() () { return m_stop && m_state == State::END; }
+            explicit operator bool() { return m_stop && m_state == State::END; }
 
         private:
             void jump(State state) { m_state = state; m_buffer.clear(); }

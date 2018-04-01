@@ -27,8 +27,10 @@ namespace tinynet
     }
 
     TcpConn::TcpConn(EventLoop &loop, const Ip4Addr &addr)
-        : TcpConn (loop), m_addr(make_shared<Ip4Addr>(addr))
+        : TcpConn (loop)
     {
+        m_addr = make_shared<Ip4Addr>(addr);
+
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         fatalif(fd == -1);
 
@@ -43,8 +45,10 @@ namespace tinynet
     }
 
     TcpConn::TcpConn(EventLoop &loop, const UdsAddr &addr)
-        : TcpConn(loop), m_addr(make_shared<UdsAddr>(addr))
+        : TcpConn(loop)
     {
+        m_addr = make_shared<UdsAddr>(addr);
+
         int fd = socket(AF_UNIX, SOCK_STREAM, 0);
         fatalif(fd == -1);
 

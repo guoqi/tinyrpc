@@ -13,3 +13,8 @@ add_subdirectory(tinynet)
 add_subdirectory(config)
 add_subdirectory(base)
 add_subdirectory(tinyrpc)
+
+add_library(${PROJECT_NAME} STATIC $<TARGET_OBJECTS:tinynet>
+                                   $<TARGET_OBJECTS:base>
+                                   $<TARGET_OBJECTS:config>
+                                   $<TARGET_OBJECTS:rpccore>)
