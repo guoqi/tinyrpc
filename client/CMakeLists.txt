@@ -11,4 +11,6 @@ include_directories(
 add_library(rpc_client OBJECT
         include/rpcconn.h
         src/rpcconn.cpp
+        include/client.h
+        src/client.cpp
         )

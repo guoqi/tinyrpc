@@ -27,22 +27,36 @@ namespace tinyrpc
         connect();
     }
 
-    RpcConn::RpcConn(RpcConn &&rpcconn) noexcept
-    {
-        m_conn = std::move(rpcconn.m_conn);
-    }
-
-    RpcConn & RpcConn::send(const Message &msg)
+    std::shared_ptr<RpcConn> RpcConn::send(const Message &msg)
     {
         m_conn->onWrite([msg](shared_ptr<TcpConn> conn){
             msg.sendBy(conn);
             conn->readwrite(true, false);
         });
 
-        return *this;
+        return shared_from_this();
     }
 
-    RpcConn & RpcConn::recv(const std::function<void(Message & msg)> & cb)
+    std::shared_ptr<RpcConn> RpcConn::recv(Message &retval)
+    {
+        bool readable = false;
+
+        m_conn->onRead([&readable](shared_ptr<TcpConn> conn){
+            readable = true;
+        });
+
+        // wait for connection readable
+        while (! readable)
+        {
+            // TODO sleep
+        }
+
+        retval = Message::recvBy(m_conn);
+
+        return shared_from_this();
+    }
+
+    std::shared_ptr<RpcConn> RpcConn::asyn_recv(const std::function<void(Message & msg)> & cb)
     {
         m_conn->onRead([cb](shared_ptr<TcpConn> conn){
             Message msg = Message::recvBy(conn);
@@ -52,7 +66,7 @@ namespace tinyrpc
             conn->readwrite(false, true);
         });
 
-        return *this;
+        return shared_from_this();
     }
 
     void RpcConn::init()
@@ -86,7 +100,7 @@ namespace tinyrpc
     {
         try
         {
-            send(Message(HEARTBEAT)).recv([](Message & msg){
+            send(Message(HEARTBEAT))->asyn_recv([](Message & msg){
                 panicif(msg.protocol() == HEARTBEAT, ERR_INVALID_MESSAGE, "received not heart packet");
             });
         }
@@ -100,5 +114,46 @@ namespace tinyrpc
     void RpcConn::handleConnected(std::shared_ptr<tinynet::TcpConn> conn)
     {
         init();
+    }
+
+    Connector::Connector(int max_conn)
+        : m_loop (max_conn)
+    {
+        m_main_thread = Thread::create([](){
+            m_loop.start();
+        });
+    }
+
+    Connector& Connector::instance()
+    {
+        static Connector connector(100000);
+        return connector;
+    }
+
+    RpcConn::Ptr Connector::get(const std::string &service_uri)
+    {
+        // TODO split service_url and accquire coresponding (ip, port) tuple
+
+        std::pair<string, int> addr;
+        if (m_rpcconn_pool.find(addr) == m_rpcconn_pool.end())
+        {
+            m_rpcconn_pool[addr] = make_shared<RpcConn> (m_loop, Ip4Addr(addr.first, addr.second));
+        }
+
+        return m_rpcconn_pool.at(addr);
+    }
+
+    void Connector::call(const std::string &service_uri, const Message &msg, Message &retval)
+    {
+        auto conn = get(service_uri);
+
+        conn->send(msg)->recv(retval);
+    }
+
+    void Connector::asyn_call(const std::string &service_uri, const Message &msg, const MessageCallback &cb)
+    {
+        auto conn = get(service_uri);
+
+        conn->send(msg)->asyn_recv(cb);
     }
 }

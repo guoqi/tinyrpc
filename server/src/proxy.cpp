@@ -23,7 +23,7 @@ namespace tinyrpc
 
     void Proxy::start()
     {
-        for (const auto & server : ServerPool::servers())
+        for (const auto & server : ServerPool::instance().servers())
         {
             int threads = 0;
             try {
@@ -39,7 +39,7 @@ namespace tinyrpc
 
     void Proxy::stop()
     {
-        for (const auto & server : ServerPool::servers())
+        for (const auto & server : ServerPool::instance().servers())
         {
             server->stopApp();
         }
@@ -61,7 +61,7 @@ namespace tinyrpc
                 // TODO
                 break;
             case MESSAGE: {
-                auto dst = ServerPool::locate(msg.dst());
+                auto dst = ServerPool::instance().locate(msg.dst());
                 if (! dst.first)
                 {
                     dst.first->handleService(dst.second, msg);

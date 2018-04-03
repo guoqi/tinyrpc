@@ -58,20 +58,22 @@ namespace tinyrpc
     public:
         ~ServerPool() = default;
 
-        static void add(std::shared_ptr<Server> server);
+        void add(std::shared_ptr<Server> server);
 
-        static std::pair< std::shared_ptr<Server>, std::string > locate(uint64_t sid);
+        std::pair< std::shared_ptr<Server>, std::string > locate(uint64_t sid);
 
-        static const std::vector< std::shared_ptr<Server> > servers() { return m_servers; }
+        const std::vector< std::shared_ptr<Server> > servers() { return m_servers; }
+
+        static ServerPool & instance();
 
     private:
         ServerPool() = default;
 
     private:
-        static std::map< uint64_t, std::string >               m_services;
-        static std::map< uint64_t, size_t >                    m_svc2svr;
-        static std::vector< std::shared_ptr<Server> >          m_servers;
-        static uint64_t                                        m_count;
+        std::map< uint64_t, std::string >               m_services;
+        std::map< uint64_t, size_t >                    m_svc2svr;
+        std::vector< std::shared_ptr<Server> >          m_servers;
+        uint64_t                                        m_count;
     };
 
     // manage server context
@@ -82,7 +84,7 @@ namespace tinyrpc
         ServerContext()
         {
             m_server = std::make_shared<T>();
-            ServerPool::add(m_server);
+            ServerPool::instance().add(m_server);
             m_server->initialize();
         }
 
