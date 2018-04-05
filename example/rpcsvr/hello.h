@@ -1,4 +1,5 @@
 #include "server.h"
+#include <string>
 
 using namespace tinyrpc;
 
@@ -6,7 +7,7 @@ using namespace tinyrpc;
 class HelloSvr : public Server
 {
 public:
-    HelloSvr();
+    HelloSvr(const std::string & name);
 
     void initialize();
     void destory();

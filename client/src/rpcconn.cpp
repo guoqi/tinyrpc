@@ -10,6 +10,7 @@
 using namespace std;
 using namespace std::placeholders;
 using namespace tinynet;
+using namespace util;
 
 const static int HEARTBEAT_TIME = 1000;  // send heartbeat packet every one second
 
@@ -48,7 +49,7 @@ namespace tinyrpc
         // wait for connection readable
         while (! readable)
         {
-            // TODO sleep
+            // TODO sleep to avoid cpu always running
         }
 
         retval = Message::recvBy(m_conn);
@@ -78,6 +79,9 @@ namespace tinyrpc
     void RpcConn::connect()
     {
         m_conn->onConnected(std::bind(&RpcConn::handleConnected, this, _1));
+
+        // wait for connection establishing
+        while (m_conn->state() != ConnState::CONN && m_conn->state() != ConnState::FAIL) {}
     }
 
     void RpcConn::reconnect()
@@ -119,8 +123,21 @@ namespace tinyrpc
     Connector::Connector(int max_conn)
         : m_loop (max_conn)
     {
-        m_main_thread = Thread::create([](){
-            m_loop.start();
+        m_main_thread = Thread::create([this](){
+            try
+            {
+                m_loop.start();
+            }
+            catch (TinyExp & e)
+            {
+                info("%s", e.what());
+                m_loop.stop();
+            }
+            catch (std::exception & e)
+            {
+                info("%s", e.what());
+                m_loop.stop();
+            }
         });
     }
 
@@ -134,7 +151,7 @@ namespace tinyrpc
     {
         // TODO split service_url and accquire coresponding (ip, port) tuple
 
-        std::pair<string, int> addr;
+        std::pair<string, int> addr = {"127.0.0.1", 7777};
         if (m_rpcconn_pool.find(addr) == m_rpcconn_pool.end())
         {
             m_rpcconn_pool[addr] = make_shared<RpcConn> (m_loop, Ip4Addr(addr.first, addr.second));
@@ -147,13 +164,19 @@ namespace tinyrpc
     {
         auto conn = get(service_uri);
 
-        conn->send(msg)->recv(retval);
+        if (! conn->fail())
+        {
+            conn->send(msg)->recv(retval);
+        }
     }
 
     void Connector::asyn_call(const std::string &service_uri, const Message &msg, const MessageCallback &cb)
     {
         auto conn = get(service_uri);
 
-        conn->send(msg)->asyn_recv(cb);
+        if (! conn->fail())
+        {
+            conn->send(msg)->asyn_recv(cb);
+        }
     }
 }

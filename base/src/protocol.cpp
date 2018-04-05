@@ -154,7 +154,10 @@ namespace tinyrpc
         p += TYPE_SIZE;
         memcpy(p, &m_seqno, SEQNO_SIZE);
         p += SEQNO_SIZE;
-        memcpy(p, m_extend->dump().c_str(), EXTEND_SIZE);
+        if (m_extend == nullptr)
+        {
+            memcpy(p, m_extend->dump().c_str(), EXTEND_SIZE);
+        }
         p += EXTEND_SIZE;
         int len = length();
         memcpy(p, &len, DATALEN_SIZE);

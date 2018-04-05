@@ -11,6 +11,7 @@
 #include "util.h"
 #include "event.h"
 #include "net.h"
+#include "errlist.h"
 
 namespace tinynet
 {
@@ -25,6 +26,7 @@ namespace tinynet
         CONN      = 0x02,
         READ      = 0x03,
         WRITE     = 0x04,
+        FAIL      = 0x05
     };
 
     using TcpConnCallback = std::function<void(std::shared_ptr<TcpConn> conn)>;
@@ -62,8 +64,16 @@ namespace tinynet
         Ip4Addr peername() const;
         EventLoop & loop() { return m_loop; }
 
+        ConnState state() const { return m_state; }
+
         template<typename T>
-        const T addr() const;
+        const T addr() const
+        {
+            auto p = dynamic_cast<T *> (m_addr.get());
+            panicif(p == nullptr, ERR_INVALID_TYPE, "invalid template type parmater.");
+
+            return *p;
+        }
 
         inline int fd() const { return m_event.fd(); }
 

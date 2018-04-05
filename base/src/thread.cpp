@@ -24,7 +24,7 @@ namespace tinyrpc
 
     void Thread::run()
     {
-        int ret = pthread_create(&m_thread, nullptr, threadFunc, nullptr);
+        int ret = pthread_create(&m_thread, nullptr, threadFunc, this);
         fatalif(ret != 0);
     }
 

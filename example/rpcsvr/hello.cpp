@@ -4,8 +4,8 @@
 using namespace std;
 using namespace std::placeholders;
 
-HelloSvr::HelloSvr()
-    : Server()
+HelloSvr::HelloSvr(const string & name)
+    : Server(name)
 {
     bind("hello", std::bind(&HelloSvr::hello, this, _1, _2));
 }

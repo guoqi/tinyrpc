@@ -128,7 +128,16 @@ namespace tinynet
 
             auto self = s.lock();
 
-            self->m_readAction(self);
+            try
+            {
+                self->m_state = ConnState::READ;
+                self->m_readAction(self);
+            }
+            catch (util::TinyExp & e)
+            {
+                self->m_state = ConnState::FAIL;
+                throw;
+            }
         });
 
 
@@ -148,7 +157,16 @@ namespace tinynet
 
             auto self = s.lock();
 
-            self->m_writeAction(self);
+            try
+            {
+                self->m_state = ConnState::WRITE;
+                self->m_writeAction(self);
+            }
+            catch (util::TinyExp & e)
+            {
+                self->m_state = ConnState::FAIL;
+                throw;
+            }
         });
 
         m_loop.alter(m_event);
@@ -172,15 +190,24 @@ namespace tinynet
 
             auto self = s.lock();
 
-            fatalif(getsockopt(self->fd(), SOL_SOCKET, SO_ERROR, &err, &errlen) == -1);
+            try
+            {
+                fatalif(getsockopt(self->fd(), SOL_SOCKET, SO_ERROR, &err, &errlen) == -1);
 
-            fatalif(err != 0);
+                errno = err;
+                fatalif(err != 0);
 
-            self->m_state = ConnState::CONN;
+                self->m_state = ConnState::CONN;
 
-            loop.remove(ev);
+                loop.remove(ev);
 
-            self->m_connectedAction(self);
+                self->m_connectedAction(self);
+            }
+            catch (util::TinyExp & e)
+            {
+                self->m_state = ConnState::FAIL;
+                throw;
+            }
         });
 
         m_loop.alter(m_event);
@@ -211,15 +238,6 @@ namespace tinynet
         }
 
         return Ip4Addr(sa);
-    }
-
-    template<typename T>
-    const T TcpConn::addr() const
-    {
-        auto p = dynamic_cast<T> (m_addr.get());
-        panicif(p == nullptr, ERR_INVALID_TYPE, "invalid template type parmater.");
-
-        return *p;
     }
 
     std::shared_ptr<TcpConn> TcpConn::createConnection(EventLoop &loop, const std::string ip, int port)

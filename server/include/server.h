@@ -18,7 +18,7 @@
 #include <vector>
 
 #define DECLARE_SERVER_CLASS(server) \
-    ServerContext<server> __context##server
+    ServerContext<server> __context##server(#server)
 
 namespace tinyrpc
 {
@@ -30,7 +30,7 @@ namespace tinyrpc
     {
     public:
         friend class ServerPool;
-        Server() = default;
+        explicit Server(const std::string & name): m_name(name) {}
         virtual ~Server() = default;
 
         virtual void initialize() = 0;
@@ -81,9 +81,9 @@ namespace tinyrpc
     class ServerContext
     {
     public:
-        ServerContext()
+        ServerContext(const std::string & name)
         {
-            m_server = std::make_shared<T>();
+            m_server = std::make_shared<T>(name);
             ServerPool::instance().add(m_server);
             m_server->initialize();
         }

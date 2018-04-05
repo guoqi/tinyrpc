@@ -8,13 +8,14 @@
 #include <cstdio>
 #include <map>
 #include <string>
+#include <pthread.h>
 
 #define debug(fmt, ...)     log(stdout, util::LogLevel::DEBUG, fmt, ##__VA_ARGS__)
 #define info(fmt, ...)      log(stdout, util::LogLevel::INFO, fmt, ##__VA_ARGS__)
 #define warn(fmt, ...)      log(stderr, util::LogLevel::WARN, fmt, ##__VA_ARGS__)
 #define error(fmt, ...)     log(stderr, util::LogLevel::ERROR, fmt, ##__VA_ARGS__)
 
-#define log(fd, level, fmt, ...) do { fprintf(fd, "[%s][%s][%d]" fmt "\n", util::LEVEL_STRING.at(level).c_str(), __FILE__, __LINE__, ##__VA_ARGS__); } while (false)
+#define log(fd, level, fmt, ...) do { fprintf(fd, "[%s][%u][%s][%d]" fmt "\n", util::LEVEL_STRING.at(level).c_str(), pthread_self(), __FILE__, __LINE__, ##__VA_ARGS__); } while (false)
 
 namespace util
 {

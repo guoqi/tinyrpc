@@ -20,13 +20,14 @@ namespace tinyrpc
 
     class RpcConn : util::noncopyable, std::enable_shared_from_this<RpcConn>
     {
-        using Ptr = std::shared_ptr<RpcConn>;
         enum class AddrType {
             IPV4 = 1,
             UDS = 2
         };
 
     public:
+        using Ptr = std::shared_ptr<RpcConn>;
+
         RpcConn(tinynet::EventLoop & loop, const tinynet::Ip4Addr & addr);
         RpcConn(tinynet::EventLoop & loop, const tinynet::UdsAddr & addr);
 
@@ -37,6 +38,8 @@ namespace tinyrpc
         std::shared_ptr<RpcConn> recv(Message & retval);
 
         std::shared_ptr<RpcConn> asyn_recv(const MessageCallback & cb);
+
+        bool fail() const { return m_conn->state() == tinynet::ConnState::FAIL; }
 
     private:
         void init();
