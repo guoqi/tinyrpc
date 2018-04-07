@@ -17,80 +17,118 @@ const static int HEARTBEAT_TIME = 1000;  // send heartbeat packet every one seco
 namespace tinyrpc
 {
     RpcConn::RpcConn(tinynet::EventLoop &loop, const tinynet::Ip4Addr &addr)
+        : m_addrType(AddrType::IPV4)
     {
         m_conn = TcpConn::createConnection(loop, addr);
         connect();
     }
 
     RpcConn::RpcConn(tinynet::EventLoop &loop, const tinynet::UdsAddr &addr)
+        : m_addrType(AddrType::UDS)
     {
         m_conn = TcpConn::createConnection(loop, addr);
         connect();
     }
 
-    std::shared_ptr<RpcConn> RpcConn::send(const Message &msg)
+    RpcConn * RpcConn::send(const Message &msg)
     {
         m_conn->onWrite([msg](shared_ptr<TcpConn> conn){
             msg.sendBy(conn);
             conn->readwrite(true, false);
         });
 
-        return shared_from_this();
+        return this;
     }
 
-    std::shared_ptr<RpcConn> RpcConn::recv(Message &retval)
+    RpcConn * RpcConn::recv(Message &retval)
     {
-        bool readable = false;
-
-        m_conn->onRead([&readable](shared_ptr<TcpConn> conn){
-            readable = true;
+        m_conn->onRead([this, &retval](shared_ptr<TcpConn> conn){
+            debug("fd=%d, %p", conn->fd(), conn.get());
+            debug("%p", this);
+            try
+            {
+                debug("%p", this);
+                retval = Message::recvBy(conn);
+            }
+            catch (util::TinyExp & e)
+            {
+                debug("fd=%d, %p", conn->fd(), conn.get());
+                debug("fd=%d, %p", m_conn->fd(), m_conn.get());
+                debug("%p", this);
+                reconnect();
+            }
+            debug("%p", this);
         });
 
+        debug("%p", m_conn.get());
+        debug("%p", this);
+
         // wait for connection readable
-        while (! readable)
+        while (m_conn->state() != ConnState::READ && m_conn->state() != ConnState::FAIL)
         {
             // TODO sleep to avoid cpu always running
         }
 
-        retval = Message::recvBy(m_conn);
-
-        return shared_from_this();
+        return this;
     }
 
-    std::shared_ptr<RpcConn> RpcConn::asyn_recv(const std::function<void(Message & msg)> & cb)
+    RpcConn* RpcConn::asyn_send(const Message &msg)
     {
-        m_conn->onRead([cb](shared_ptr<TcpConn> conn){
-            Message msg = Message::recvBy(conn);
-
-            cb(msg);
-
-            conn->readwrite(false, true);
+        m_asyn_send_queue.emplace_back([this](Message & msg) {
+            msg.sendBy(m_conn);
         });
 
-        return shared_from_this();
+        return this;
+    }
+
+    RpcConn * RpcConn::asyn_recv(const std::function<void(Message & msg)> & cb)
+    {
+        m_conn->onRead([this, cb](shared_ptr<TcpConn> conn){
+            Message msg;
+            try
+            {
+                msg = Message::recvBy(conn);
+
+                cb(msg);
+            }
+            catch (util::TinyExp & e)
+            {
+                reconnect();
+            }
+        });
+
+        return this;
     }
 
     void RpcConn::init()
     {
         // add heartbeat event
-        m_conn->loop().runAfter(0, std::bind(&RpcConn::handleHeartBeat, this, _1), HEARTBEAT_TIME);
+        // m_conn->loop().runAfter(0, std::bind(&RpcConn::handleHeartBeat, this, _1), HEARTBEAT_TIME);
     }
 
     void RpcConn::connect()
     {
         m_conn->onConnected(std::bind(&RpcConn::handleConnected, this, _1));
 
+        // TODO pthread wait
         // wait for connection establishing
         while (m_conn->state() != ConnState::CONN && m_conn->state() != ConnState::FAIL) {}
     }
 
     void RpcConn::reconnect()
     {
+        debug("fd=%d, %p", m_conn->fd(), m_conn.get());
+        m_conn->close();
+
+        debug("hhhh");
+
         shared_ptr<TcpConn> conn;
         switch (m_addrType)
         {
             case AddrType::IPV4:
+                debug("hhhh");
                 conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<Ip4Addr>());
+                debug("hhhh");
                 break;
             case AddrType::UDS:
                 conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<UdsAddr>());
@@ -118,6 +156,8 @@ namespace tinyrpc
     void RpcConn::handleConnected(std::shared_ptr<tinynet::TcpConn> conn)
     {
         init();
+
+        // TODO singal a pthread cond variable
     }
 
     Connector::Connector(int max_conn)
@@ -152,6 +192,7 @@ namespace tinyrpc
         // TODO split service_url and accquire coresponding (ip, port) tuple
 
         std::pair<string, int> addr = {"127.0.0.1", 7777};
+        debug("%d", m_rpcconn_pool.find(addr) == m_rpcconn_pool.end());
         if (m_rpcconn_pool.find(addr) == m_rpcconn_pool.end())
         {
             m_rpcconn_pool[addr] = make_shared<RpcConn> (m_loop, Ip4Addr(addr.first, addr.second));
@@ -167,6 +208,7 @@ namespace tinyrpc
         if (! conn->fail())
         {
             conn->send(msg)->recv(retval);
+            debug("%p", conn.get());
         }
     }
 

@@ -59,7 +59,7 @@ namespace tinyrpc
         Message(const Message & message)
             : m_protocol(message.protocol()), m_data(message.m_data), m_datalen(0), m_version(1)
         {
-            m_extend = std::move(message.m_extend);
+            m_extend = message.m_extend;
         }
 
         static Message recvBy(const std::shared_ptr<tinynet::TcpConn> & conn);
@@ -99,7 +99,7 @@ namespace tinyrpc
             explicit operator bool () { return m_stop && m_state == State::END; }
 
         private:
-            void jump(State state) { m_state = state; m_buffer.clear(); }
+            void jump(State state) { m_state = state; m_buffer.str(""); }
 
             State               m_state;
             std::stringstream   m_buffer;

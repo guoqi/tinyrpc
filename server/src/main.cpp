@@ -19,9 +19,20 @@ int main(int argc, char * argv[])
         print_usage(argv[0]);
         exit(1);
     }
-    string filename(argv[1]);
-    Config config(filename);
-    Proxy app(config);
-    app.start();
+
+    shared_ptr<Proxy> app;
+
+    try
+    {
+        string filename(argv[1]);
+        Config config(filename);
+        app = make_shared<Proxy>(config);
+        app->start();
+    }
+    catch (util::TinyExp & e)
+    {
+        app->stop();
+        info("%s", e.what());
+    }
     return 0;
 }

@@ -27,7 +27,7 @@ namespace tinyrpc
     void Config::loadMainSection(rapidjson::Document &d)
     {
         panicif(! d.HasMember("main"), ERR_INVALID_CONF, "lack of main section");
-        panicif(! d["main"].IsObject() || d["main"].HasMember("listen"), ERR_INVALID_CONF, "main section has a invalid format");
+        panicif(! d["main"].IsObject() || ! d["main"].HasMember("listen"), ERR_INVALID_CONF, "main section has a invalid format");
 
         string listen = d["main"]["listen"].GetString();
         auto delemiter = listen.find(":");
@@ -56,7 +56,7 @@ namespace tinyrpc
         auto iter = d["proxy"].FindMember("threads");
         if (iter != d.MemberEnd())
         {
-            m_proxy.m_threads = stoi(iter->value.GetString());
+            m_proxy.m_threads = iter->value.GetInt();
         }
         else
         {
@@ -66,7 +66,7 @@ namespace tinyrpc
         iter = d["proxy"].FindMember("max_connection");
         if (iter != d.MemberEnd())
         {
-            m_proxy.m_maxConn = stoi(iter->value.GetString());
+            m_proxy.m_maxConn = iter->value.GetInt();
         }
         else
         {
@@ -91,7 +91,7 @@ namespace tinyrpc
             }
 
 
-            m_servers[name] = ServerSection(name, stoi(iter->value.GetString()));
+            m_servers[name] = ServerSection(name, iter->value.GetInt());
         }
     }
 }

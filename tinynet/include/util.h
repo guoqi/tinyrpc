@@ -91,6 +91,10 @@ namespace util
         int64_t nowMs();
         int64_t nowUs();
     }
+
+
+    // string to hex
+    std::string toHex(const char * data, size_t size);
 }
 
 #endif

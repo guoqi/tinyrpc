@@ -97,7 +97,8 @@ namespace tinynet
                 break;  // There may be no left space (socket buffer) to send data, it is necessary to check whether all messages have been sent.
             }
             total += len;
-        } while (total >= msg.length());
+            debug("total=%d, len=%d, maxlength=%d", total, len, msg.length());
+        } while (total < msg.length());
 
         return total;
     }
@@ -130,8 +131,8 @@ namespace tinynet
 
             try
             {
-                self->m_state = ConnState::READ;
                 self->m_readAction(self);
+                self->m_state = ConnState::READ;
             }
             catch (util::TinyExp & e)
             {
@@ -159,8 +160,8 @@ namespace tinynet
 
             try
             {
-                self->m_state = ConnState::WRITE;
                 self->m_writeAction(self);
+                self->m_state = ConnState::WRITE;
             }
             catch (util::TinyExp & e)
             {
@@ -197,11 +198,11 @@ namespace tinynet
                 errno = err;
                 fatalif(err != 0);
 
-                self->m_state = ConnState::CONN;
-
                 loop.remove(ev);
 
                 self->m_connectedAction(self);
+
+                self->m_state = ConnState::CONN;
             }
             catch (util::TinyExp & e)
             {

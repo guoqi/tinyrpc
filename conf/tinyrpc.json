@@ -1,0 +1,14 @@
+{
+    "main": {
+        "listen": "127.0.0.1:7777"
+    },
+    "master": {
+    },
+    "proxy": {
+        "threads": 100,
+        "max_connection": 100
+    },
+    "HelloSvr": {
+        "threads": 100
+    }
+}

@@ -45,7 +45,7 @@ namespace tinyrpc
 
         while (i < len && ! m_stop)
         {
-            size_t size = m_state == State::DATA ? message.data().length() : blockSize.at(m_state);
+            size_t size = m_state == State::DATA ? message.length() : blockSize.at(m_state);
             m_buffer << src[i++];
 
             if (m_buffer.str().size() != size)
@@ -75,7 +75,7 @@ namespace tinyrpc
                     memcpy(&protocol, m_buffer.str().data(), sizeof(protocol));
                     if (Message::validProtocol(protocol)) {
                         message.protocol(static_cast<ProtocolType> (protocol));
-                        jump(State::EXTEND);
+                        jump(State::SRC);
                     } else {
                         error("invalid protocol type: %d", protocol);
                         return -1;
@@ -85,16 +85,19 @@ namespace tinyrpc
                     uint64_t src;
                     memcpy(&src, m_buffer.str().data(), sizeof(src));
                     message.src(src);
+                    jump(State::DST);
                     break;
                 case State::DST:
                     uint64_t dst;
                     memcpy(&dst, m_buffer.str().data(), sizeof(dst));
                     message.dst(dst);
+                    jump(State::SEQNO);
                     break;
                 case State::SEQNO:
                     uint64_t seq;
                     memcpy(&seq, m_buffer.str().data(), sizeof(seq));
                     message.seqno(seq);
+                    jump(State::EXTEND);
                     break;
                 case State::EXTEND:
                     message.extend(ExtendArea::parse(m_buffer.str()));
@@ -152,9 +155,13 @@ namespace tinyrpc
         p += VERSION_SIZE;
         memcpy(p, &m_protocol, TYPE_SIZE);
         p += TYPE_SIZE;
+        memcpy(p, &m_srcid, SRC_SIZE);
+        p += SRC_SIZE;
+        memcpy(p, &m_dstid, DST_SIZE);
+        p += DST_SIZE;
         memcpy(p, &m_seqno, SEQNO_SIZE);
         p += SEQNO_SIZE;
-        if (m_extend == nullptr)
+        if (m_extend != nullptr)
         {
             memcpy(p, m_extend->dump().c_str(), EXTEND_SIZE);
         }
@@ -165,6 +172,7 @@ namespace tinyrpc
 
         msg.append(string(header, p - header));
         msg.append(m_data);
+        msg.append("YF");
         return msg;
     }
 
@@ -177,11 +185,18 @@ namespace tinyrpc
         do
         {
             len = conn->recv(buffer, sizeof(buffer));
+
+            panicif(len == 0, NET_PEER_CLOSE, "peer socket closed");
+
             if (len > 0)
-                parser(buffer, msg);
+            {
+                parser(string(buffer, len), msg);
+            }
         } while (len > 0 && ! parser);
 
         panicif(! parser, ERR_INVALID_MESSAGE, "incomplete message packet");
+
+        return msg;
     }
 
     void Message::sendBy(std::shared_ptr<tinynet::TcpConn> conn) const

@@ -12,6 +12,7 @@
 #include "thread.h"
 #include <memory>
 #include <map>
+#include <list>
 
 // rpc connection class
 namespace tinyrpc
@@ -31,13 +32,13 @@ namespace tinyrpc
         RpcConn(tinynet::EventLoop & loop, const tinynet::Ip4Addr & addr);
         RpcConn(tinynet::EventLoop & loop, const tinynet::UdsAddr & addr);
 
-        ~RpcConn() = default;
+        ~RpcConn() { debug("desctructor %p", this); }
 
-        std::shared_ptr<RpcConn> send(const Message & msg);
+        RpcConn * send(const Message & msg);
+        RpcConn * recv(Message & retval);
 
-        std::shared_ptr<RpcConn> recv(Message & retval);
-
-        std::shared_ptr<RpcConn> asyn_recv(const MessageCallback & cb);
+        RpcConn * asyn_send(const Message & msg);
+        RpcConn * asyn_recv(const MessageCallback & cb);
 
         bool fail() const { return m_conn->state() == tinynet::ConnState::FAIL; }
 
@@ -53,6 +54,8 @@ namespace tinyrpc
     private:
         std::shared_ptr<tinynet::TcpConn>   m_conn;
         AddrType                            m_addrType;
+        std::list<MessageCallback>          m_asyn_send_queue;
+        std::list<MessageCallback>          m_asyn_recv_queue;
     };
 
     class Connector : util::noncopyable

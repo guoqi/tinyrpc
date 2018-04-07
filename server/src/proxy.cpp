@@ -48,6 +48,8 @@ namespace tinyrpc
 
     void Proxy::dispatch(std::shared_ptr<TcpConn> & client, const Message & msg)
     {
+        debug("%s", msg.data().c_str());
+
         switch (msg.protocol())
         {
             case HEARTBEAT: {
