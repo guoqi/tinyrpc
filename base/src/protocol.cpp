@@ -178,21 +178,21 @@ namespace tinyrpc
 
     Message Message::recvBy(const std::shared_ptr<tinynet::TcpConn> & conn)
     {
-        char buffer[4096] = {0};
+        char buffer[1] = {0};
         ssize_t len = 0;
         Message::Parser parser;
         Message msg;
+
         do
         {
             len = conn->recv(buffer, sizeof(buffer));
 
             panicif(len == 0, NET_PEER_CLOSE, "peer socket closed");
 
-            if (len > 0)
-            {
+            if (len > 0) {
                 parser(string(buffer, len), msg);
             }
-        } while (len > 0 && ! parser);
+        } while (len > 0 && !parser);
 
         panicif(! parser, ERR_INVALID_MESSAGE, "incomplete message packet");
 

@@ -39,4 +39,27 @@ namespace tinyrpc
         (self->m_func)();
     }
 
+
+    ThreadCond::ThreadCond()
+    {
+        pthread_cond_init(&m_cond, nullptr);
+    }
+
+    ThreadCond::~ThreadCond()
+    {
+        pthread_cond_destroy(&m_cond);
+    }
+
+    void ThreadCond::wait() noexcept
+    {
+        pthread_mutex_lock(&m_mtx);
+        pthread_cond_wait(&m_cond, &m_mtx);
+        pthread_mutex_unlock(&m_mtx);
+    }
+
+    void ThreadCond::signal() noexcept
+    {
+        pthread_cond_signal(&m_cond);
+    }
+
 }

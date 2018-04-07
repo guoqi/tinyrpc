@@ -17,7 +17,9 @@
 // rpc connection class
 namespace tinyrpc
 {
-    using MessageCallback = std::function<void(Message & msg)>;
+    using SendCallback = std::function<void()>;
+    using RecvCallback = std::function<void(Message & msg)>;
+    using ErrorCallback = std::function<void(const util::TinyExp & err)>;
 
     class RpcConn : util::noncopyable, std::enable_shared_from_this<RpcConn>
     {
@@ -34,11 +36,13 @@ namespace tinyrpc
 
         ~RpcConn() { debug("desctructor %p", this); }
 
+        // syn operation
         RpcConn * send(const Message & msg);
         RpcConn * recv(Message & retval);
 
-        RpcConn * asyn_send(const Message & msg);
-        RpcConn * asyn_recv(const MessageCallback & cb);
+        // asyn operation
+        RpcConn * asyn_send(const Message & msg, const ErrorCallback & errhandler);
+        RpcConn * asyn_recv(const RecvCallback & cb, const ErrorCallback & errhandler);
 
         bool fail() const { return m_conn->state() == tinynet::ConnState::FAIL; }
 
@@ -47,6 +51,11 @@ namespace tinyrpc
         void connect();
         void reconnect();
 
+        bool detectConn();
+
+        void handleRead(const std::shared_ptr<tinynet::TcpConn> & conn);
+        void handleWrite(const std::shared_ptr<tinynet::TcpConn> & conn);
+
     private:    // event handler
         void handleHeartBeat(tinynet::EventLoop & loop);
         void handleConnected(std::shared_ptr<tinynet::TcpConn> conn);
@@ -54,8 +63,10 @@ namespace tinyrpc
     private:
         std::shared_ptr<tinynet::TcpConn>   m_conn;
         AddrType                            m_addrType;
-        std::list<MessageCallback>          m_asyn_send_queue;
-        std::list<MessageCallback>          m_asyn_recv_queue;
+        std::list<SendCallback>             m_asyn_send_queue;
+        std::list< std::pair<RecvCallback,
+                ErrorCallback> >            m_asyn_recv_queue;
+        ThreadCond                          m_cond;
     };
 
     class Connector : util::noncopyable
@@ -78,7 +89,7 @@ namespace tinyrpc
          * asynchronus remote process call
          * parameeter is simliar as call
          */
-        void asyn_call(const std::string & service_uri, const Message & msg, const MessageCallback & cb);
+        void asyn_call(const std::string & service_uri, const Message & msg, const RecvCallback & cb, const ErrorCallback & errhandler);
 
     private:
         explicit Connector(int max_conn);

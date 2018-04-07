@@ -79,6 +79,8 @@ namespace tinynet
 
         void attach(int fd) { m_event.attach(fd); }
 
+        bool checkClosed();
+
     public:
         ssize_t send(const char * msg, size_t len) const;
 

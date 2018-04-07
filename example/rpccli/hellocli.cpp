@@ -27,13 +27,26 @@ int main()
         debug("req=%s", msg.data().c_str());
         Hello.hello(msg, retval);  // syn call
         debug("resp=%s", retval.data().c_str());
+        Hello.hello(msg, retval);  // syn call
+        debug("resp=%s", retval.data().c_str());
 
         // asyn call
         Hello.hello(msg, [](Message & retval){
             debug("asyn resp=%s", retval.data().c_str());
+        }, [](const TinyExp & e){
+            debug("errhanlder=%s", e.what());
         });
 
-        sleep(120);
+        Hello.hello(msg, [](Message & retval){
+            debug("asyn 2 resp=%s", retval.data().c_str());
+        }, [](const TinyExp & e){
+            debug("errhandler_2=%s", e.what());
+        });
+
+        Hello.hello(msg, retval);
+        debug("syn resp=%s", retval.data().c_str());
+
+        sleep(10);
     }
     catch (std::exception & e)
     {

@@ -33,9 +33,9 @@ namespace tinyrpc
             }
 
             // asyn rpc call opeartor
-            void operator() (const Message & msg, const MessageCallback & cb) const
+            void operator() (const Message & msg, const RecvCallback & cb, const ErrorCallback & errhandler) const
             {
-                Connector::instance().asyn_call(m_server + "." + m_service, msg, cb);
+                Connector::instance().asyn_call(m_server + "." + m_service, msg, cb, errhandler);
             }
 
         private:

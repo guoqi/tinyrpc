@@ -35,6 +35,20 @@ namespace tinyrpc
         pthread_t           m_thread;
     };
 
+    class ThreadCond
+    {
+    public:
+        ThreadCond();
+        ~ThreadCond();
+
+        void wait() noexcept;
+        void signal() noexcept;
+
+    private:
+        pthread_cond_t      m_cond;
+        pthread_mutex_t     m_mtx;
+    };
+
 }
 
 #endif //TINYRPC_THREAD_H

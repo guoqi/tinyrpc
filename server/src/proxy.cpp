@@ -102,7 +102,7 @@ namespace tinyrpc
             Message msg;
             msg.data(errmsg);
             msg.sendBy(c);
-            c->close();
+            c->readwrite(true, false);
         });
         client->readwrite(false, true);
     }

@@ -32,87 +32,141 @@ namespace tinyrpc
 
     RpcConn * RpcConn::send(const Message &msg)
     {
-        m_conn->onWrite([msg](shared_ptr<TcpConn> conn){
-            msg.sendBy(conn);
-            conn->readwrite(true, false);
+        m_asyn_send_queue.emplace_back([this, msg](){
+            try
+            {
+                msg.sendBy(m_conn);
+            }
+            catch (const util::TinyExp & e)
+            {
+
+            }
+
+            m_cond.signal();
         });
+
+        m_cond.wait();
 
         return this;
     }
 
     RpcConn * RpcConn::recv(Message &retval)
     {
-        m_conn->onRead([this, &retval](shared_ptr<TcpConn> conn){
-            debug("fd=%d, %p", conn->fd(), conn.get());
-            debug("%p", this);
+        auto cb = [this, &retval](Message & msg){
+            retval = msg;
+            m_cond.signal();
+        };
+
+        auto errhandler = [this](const TinyExp & e){
+            m_cond.signal();
+        };
+
+        m_asyn_recv_queue.emplace_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
+
+        m_cond.wait();
+
+        return this;
+    }
+
+    RpcConn* RpcConn::asyn_send(const Message &msg, const ErrorCallback & errhandler)
+    {
+        m_asyn_send_queue.emplace_back([this, msg, errhandler]() {
             try
             {
-                debug("%p", this);
-                retval = Message::recvBy(conn);
+                msg.sendBy(m_conn);
             }
-            catch (util::TinyExp & e)
+            catch (const TinyExp & e)
             {
-                debug("fd=%d, %p", conn->fd(), conn.get());
-                debug("fd=%d, %p", m_conn->fd(), m_conn.get());
-                debug("%p", this);
-                reconnect();
+                errhandler(e);
             }
-            debug("%p", this);
         });
 
-        debug("%p", m_conn.get());
-        debug("%p", this);
+        return this;
+    }
 
-        // wait for connection readable
-        while (m_conn->state() != ConnState::READ && m_conn->state() != ConnState::FAIL)
+    RpcConn * RpcConn::asyn_recv(const RecvCallback & cb, const ErrorCallback & errhandler)
+    {
+        m_asyn_recv_queue.emplace_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
+
+        return this;
+    }
+
+    void RpcConn::handleRead(const std::shared_ptr<tinynet::TcpConn> &conn)
+    {
+        // info("%s, %d", __FUNCTION__, m_asyn_recv_queue.size());
+
+        /*
+        if (detectConn())
         {
-            // TODO sleep to avoid cpu always running
+            reconnect();
+            return;
         }
+        */
 
-        return this;
-    }
-
-    RpcConn* RpcConn::asyn_send(const Message &msg)
-    {
-        m_asyn_send_queue.emplace_back([this](Message & msg) {
-            msg.sendBy(m_conn);
-        });
-
-        return this;
-    }
-
-    RpcConn * RpcConn::asyn_recv(const std::function<void(Message & msg)> & cb)
-    {
-        m_conn->onRead([this, cb](shared_ptr<TcpConn> conn){
-            Message msg;
+        while (! m_asyn_recv_queue.empty())
+        {
+            auto & item = m_asyn_recv_queue.front();
             try
             {
-                msg = Message::recvBy(conn);
+                Message msg = Message::recvBy(conn);
 
-                cb(msg);
+                (item.first)(msg);
             }
-            catch (util::TinyExp & e)
+            catch (const util::TinyExp & e)
             {
-                reconnect();
+                (item.second)(e);
             }
-        });
+            catch (...)
+            {
+                m_asyn_recv_queue.pop_front();
+                throw;
+            }
+            m_asyn_recv_queue.pop_front();
+        }
+        conn->readwrite(true, true);
+    }
 
-        return this;
+    void RpcConn::handleWrite(const std::shared_ptr<tinynet::TcpConn> &conn)
+    {
+        // info("%s, %d", __FUNCTION__, m_asyn_send_queue.size());
+
+        /*
+        if(detectConn())
+        {
+            reconnect();
+        }
+        */
+
+        while (! m_asyn_send_queue.empty())
+        {
+            auto & item = m_asyn_send_queue.front();
+            try
+            {
+                item();
+            }
+            catch (...)
+            {
+                m_asyn_send_queue.pop_front();
+                throw;
+            }
+            m_asyn_send_queue.pop_front();
+        }
+        conn->readwrite(true, true);
     }
 
     void RpcConn::init()
     {
         // add heartbeat event
         // m_conn->loop().runAfter(0, std::bind(&RpcConn::handleHeartBeat, this, _1), HEARTBEAT_TIME);
+        m_conn->onRead(std::bind(&RpcConn::handleRead, this, _1));
+        m_conn->onWrite(std::bind(&RpcConn::handleWrite, this, _1));
     }
 
     void RpcConn::connect()
     {
         m_conn->onConnected(std::bind(&RpcConn::handleConnected, this, _1));
 
-        // TODO pthread wait
-        // wait for connection establishing
-        while (m_conn->state() != ConnState::CONN && m_conn->state() != ConnState::FAIL) {}
+        m_cond.wait();
     }
 
     void RpcConn::reconnect()
@@ -138,6 +192,22 @@ namespace tinyrpc
         connect();
     }
 
+    bool RpcConn::detectConn()
+    {
+        bool ret;
+        try
+        {
+            ret = m_conn->checkClosed();
+        }
+        catch (const util::TinyExp & e)
+        {
+            return false;
+        }
+
+        return ret;
+    }
+
+    /*
     void RpcConn::handleHeartBeat(tinynet::EventLoop &loop)
     {
         try
@@ -152,12 +222,15 @@ namespace tinyrpc
             reconnect();
         }
     }
+    */
 
     void RpcConn::handleConnected(std::shared_ptr<tinynet::TcpConn> conn)
     {
         init();
 
-        // TODO singal a pthread cond variable
+        conn->readwrite(false, true);
+
+        m_cond.signal();
     }
 
     Connector::Connector(int max_conn)
@@ -192,7 +265,6 @@ namespace tinyrpc
         // TODO split service_url and accquire coresponding (ip, port) tuple
 
         std::pair<string, int> addr = {"127.0.0.1", 7777};
-        debug("%d", m_rpcconn_pool.find(addr) == m_rpcconn_pool.end());
         if (m_rpcconn_pool.find(addr) == m_rpcconn_pool.end())
         {
             m_rpcconn_pool[addr] = make_shared<RpcConn> (m_loop, Ip4Addr(addr.first, addr.second));
@@ -208,17 +280,16 @@ namespace tinyrpc
         if (! conn->fail())
         {
             conn->send(msg)->recv(retval);
-            debug("%p", conn.get());
         }
     }
 
-    void Connector::asyn_call(const std::string &service_uri, const Message &msg, const MessageCallback &cb)
+    void Connector::asyn_call(const std::string &service_uri, const Message &msg, const RecvCallback & cb, const ErrorCallback & errhandler)
     {
         auto conn = get(service_uri);
 
         if (! conn->fail())
         {
-            conn->send(msg)->asyn_recv(cb);
+            conn->asyn_send(msg, errhandler)->asyn_recv(cb, errhandler);
         }
     }
 }
