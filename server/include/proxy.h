@@ -5,7 +5,7 @@
 #ifndef __TINYRPC_PROXY_H__
 #define __TINYRPC_PROXY_H__
 
-#include "util.h"
+#include "logger.h"
 #include "config.h"
 #include "event.h"
 #include "conn.h"

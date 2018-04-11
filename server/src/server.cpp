@@ -22,9 +22,10 @@ namespace tinyrpc
         m_app->stop();
     }
 
-    void Server::handleService(const std::string &service, const Message &msg)
+    void Server::handleService(std::shared_ptr<TcpConn> client, const std::string &service, const Message &msg)
     {
-        shared_ptr<TcpConn> client = TcpConn::createAttacher(m_app->loop(), msg.clientfd());
+        // client->loop() = m_app->loop();
+
         if (m_services.find(service) == m_services.end())
         {
             // TODO no such service. response to client and close connection
@@ -35,6 +36,7 @@ namespace tinyrpc
         int ret = m_app->makeClient([func, client, msg](){
             Message retval;
             func(msg, retval);
+            debug("retval=r%s", retval.data().c_str());
             Server::clientResp(client, retval);
         });
     }
@@ -73,15 +75,20 @@ namespace tinyrpc
 
     std::pair< std::shared_ptr<Server>, std::string > ServerPool::locate(uint64_t sid)
     {
+        info("sid=%d, servers size=%d, services size=%d", sid, m_servers.size(), m_services.size());
         if (m_services.find(sid) == m_services.end())
         {
+            debug("hhhh");
             return std::pair< std::shared_ptr<Server>, std::string> ();
         }
 
         if (m_svc2svr.find(sid) == m_svc2svr.end())
         {
+            debug("hhhh");
             return std::pair< std::shared_ptr<Server>, std::string> ();
         }
+
+        info("servers size=%d", m_servers.size());
 
         return std::make_pair(m_servers[m_svc2svr.at(sid)], m_services.at(sid));
     }
@@ -105,6 +112,7 @@ namespace tinyrpc
 
     int App::makeClient(const ThreadFunc & func)
     {
-        return m_clients.add(Thread::create(func));
+        // return m_clients.add(Thread::create(func));
+        func();
     }
 }

@@ -41,7 +41,7 @@ namespace tinyrpc
 
         std::string name() const { return m_name; }
 
-        void handleService(const std::string & service, const Message & msg);
+        void handleService(std::shared_ptr<tinynet::TcpConn> client, const std::string & service, const Message & msg);
 
     protected:
         void bind(const std::string & service, ServiceFunc);
@@ -67,7 +67,7 @@ namespace tinyrpc
         static ServerPool & instance();
 
     private:
-        ServerPool() = default;
+        ServerPool(): m_count(1) {}
 
     private:
         std::map< uint64_t, std::string >               m_services;

@@ -52,14 +52,14 @@ namespace tinyrpc
     class Message
     {
     public:
-        explicit Message(ProtocolType protocol): m_protocol(protocol), m_datalen(0), m_version(1) {}
-        Message(): m_protocol(MESSAGE), m_datalen(0), m_version(1) {}
+        explicit Message(ProtocolType protocol): m_protocol(protocol), m_datalen(0), m_version(1), m_clientfd(0) {}
+        Message(): m_protocol(MESSAGE), m_datalen(0), m_version(1), m_clientfd(0) {}
         virtual ~Message() = default;
 
         Message(const Message & message)
-            : m_protocol(message.protocol()), m_data(message.m_data), m_datalen(0), m_version(1)
+            : m_protocol(message.m_protocol), m_version(message.m_protocol), m_srcid(message.m_srcid), m_dstid(message.m_dstid),
+              m_seqno(message.m_seqno), m_extend(message.m_extend), m_data(message.m_data), m_datalen(message.m_datalen), m_clientfd(message.m_clientfd)
         {
-            m_extend = message.m_extend;
         }
 
         static Message recvBy(const std::shared_ptr<tinynet::TcpConn> & conn);

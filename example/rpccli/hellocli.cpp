@@ -23,6 +23,7 @@ int main()
     {
         HelloSvr Hello;
         Message msg, retval;
+        msg.dst(1);
         msg.data("hhhhhhhhhpapiapiapiapiapiapia");
         debug("req=%s", msg.data().c_str());
         Hello.hello(msg, retval);  // syn call
@@ -42,6 +43,8 @@ int main()
         }, [](const TinyExp & e){
             debug("errhandler_2=%s", e.what());
         });
+
+        debug("hhhhhhhhhhhhhhhhhhh");
 
         Hello.hello(msg, retval);
         debug("syn resp=%s", retval.data().c_str());

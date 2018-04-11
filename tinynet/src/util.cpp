@@ -23,6 +23,17 @@ namespace util
 
             return tv.tv_sec * 1000000 + tv.tv_usec;
         }
+
+        // current datetime in xxxx-xx-xx xx:xx:xx format
+        std::string datetime()
+        {
+            time_t tm = time(nullptr);
+            char buf[32] = {0};
+
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&tm));
+
+            return std::string(buf);
+        }
     }
 
     std::string toHex(const char * data, size_t size)

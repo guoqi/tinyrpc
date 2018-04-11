@@ -64,9 +64,9 @@ namespace tinyrpc
                 break;
             case MESSAGE: {
                 auto dst = ServerPool::instance().locate(msg.dst());
-                if (! dst.first)
+                if (dst.first != nullptr)
                 {
-                    dst.first->handleService(dst.second, msg);
+                    dst.first->handleService(client, dst.second, msg);
                 }
                 else
                 {
@@ -92,6 +92,7 @@ namespace tinyrpc
 
         client->onRead([this](shared_ptr<TcpConn> c){
             Message msg = Message::recvBy(c);
+            msg.clientfd(c->fd());
             this->dispatch(c, msg);
         });
     }

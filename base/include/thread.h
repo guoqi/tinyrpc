@@ -5,6 +5,7 @@
 #ifndef __TINYRPC_THREAD_H__
 #define __TINYRPC_THREAD_H__
 
+#include "logger.h"
 #include "util.h"
 #include <pthread.h>
 #include <functional>

@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <initializer_list>
 #include <map>
-#include "util.h"
+#include "logger.h"
 
 namespace tinynet
 {

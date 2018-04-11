@@ -34,7 +34,7 @@ namespace tinyrpc
         RpcConn(tinynet::EventLoop & loop, const tinynet::Ip4Addr & addr);
         RpcConn(tinynet::EventLoop & loop, const tinynet::UdsAddr & addr);
 
-        ~RpcConn() { debug("desctructor %p", this); }
+        ~RpcConn() { m_conn->close(); debug("desctructor %p", this); }
 
         // syn operation
         RpcConn * send(const Message & msg);
@@ -48,8 +48,9 @@ namespace tinyrpc
 
     private:
         void init();
-        void connect();
         void reconnect();
+        void connect();
+        void asyn_connect();
 
         bool detectConn();
 
@@ -58,7 +59,6 @@ namespace tinyrpc
 
     private:    // event handler
         void handleHeartBeat(tinynet::EventLoop & loop);
-        void handleConnected(std::shared_ptr<tinynet::TcpConn> conn);
 
     private:
         std::shared_ptr<tinynet::TcpConn>   m_conn;

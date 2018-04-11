@@ -3,6 +3,7 @@
 #include <fstream>
 #include "config.h"
 #include "util.h"
+#include "logger.h"
 #include "errlist.h"
 
 using namespace std;

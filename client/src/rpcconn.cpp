@@ -114,6 +114,12 @@ namespace tinyrpc
             }
             catch (const util::TinyExp & e)
             {
+                if (e.code() == NET_WOULD_BLOCK)
+                {
+                    break;
+                }
+
+                // else
                 (item.second)(e);
             }
             catch (...)
@@ -134,6 +140,7 @@ namespace tinyrpc
         if(detectConn())
         {
             reconnect();
+            return;
         }
         */
 
@@ -164,9 +171,19 @@ namespace tinyrpc
 
     void RpcConn::connect()
     {
-        m_conn->onConnected(std::bind(&RpcConn::handleConnected, this, _1));
+        m_conn->onConnected([this](std::shared_ptr<TcpConn> conn){
+            init();
+            m_cond.signal();
+        });
 
         m_cond.wait();
+    }
+
+    void RpcConn::asyn_connect()
+    {
+        m_conn->onConnected([this](std::shared_ptr<TcpConn> conn){
+            init();
+        });
     }
 
     void RpcConn::reconnect()
@@ -181,15 +198,14 @@ namespace tinyrpc
         {
             case AddrType::IPV4:
                 debug("hhhh");
-                conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<Ip4Addr>());
+                m_conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<Ip4Addr>());
                 debug("hhhh");
                 break;
             case AddrType::UDS:
-                conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<UdsAddr>());
+                m_conn = TcpConn::createConnection(m_conn->loop(), m_conn->addr<UdsAddr>());
                 break;
         }
-        m_conn = conn;
-        connect();
+        asyn_connect();
     }
 
     bool RpcConn::detectConn()
@@ -223,15 +239,6 @@ namespace tinyrpc
         }
     }
     */
-
-    void RpcConn::handleConnected(std::shared_ptr<tinynet::TcpConn> conn)
-    {
-        init();
-
-        conn->readwrite(false, true);
-
-        m_cond.signal();
-    }
 
     Connector::Connector(int max_conn)
         : m_loop (max_conn)
