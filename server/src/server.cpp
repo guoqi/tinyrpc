@@ -47,6 +47,13 @@ namespace tinyrpc
 
             // TODO free thread
         });
+
+        if (ret == -1)
+        {
+            Message retval;
+            retval.data("server is very busy now!");
+            retval.sendBy(cli);
+        }
     }
 
     void Server::bind(const std::string & service, ServiceFunc func)
