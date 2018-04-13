@@ -48,8 +48,6 @@ namespace tinyrpc
 
     void Proxy::dispatch(std::shared_ptr<TcpConn> & client, const Message & msg)
     {
-        debug("%s", msg.data().c_str());
-
         switch (msg.protocol())
         {
             case HEARTBEAT: {
@@ -66,7 +64,8 @@ namespace tinyrpc
                 auto dst = ServerPool::instance().locate(msg.dst());
                 if (dst.first != nullptr)
                 {
-                    dst.first->handleService(client, dst.second, msg);
+                    dst.first->handleService(dst.second, msg);
+                    debug("hhhhhh");
                 }
                 else
                 {
@@ -91,9 +90,25 @@ namespace tinyrpc
         }
 
         client->onRead([this](shared_ptr<TcpConn> c){
-            Message msg = Message::recvBy(c);
-            msg.clientfd(c->fd());
-            this->dispatch(c, msg);
+            bool stop = false;
+            while (! stop)  // avoid sticky package
+            {
+                try
+                {
+                    Message msg = Message::recvBy(c);
+                    msg.clientfd(c->fd());
+                    this->dispatch(c, msg);
+                }
+                catch (util::TinyExp & e)
+                {
+                    if (e.code() == NET_WOULD_BLOCK)
+                    {
+                        stop = true;
+                        continue;
+                    }
+                    throw;
+                }
+            }
         });
     }
 

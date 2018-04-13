@@ -41,11 +41,11 @@ namespace tinyrpc
 
         std::string name() const { return m_name; }
 
-        void handleService(std::shared_ptr<tinynet::TcpConn> client, const std::string & service, const Message & msg);
+        void handleService(const std::string & service, const Message & msg);
 
     protected:
         void bind(const std::string & service, ServiceFunc);
-        static void clientResp(std::shared_ptr<tinynet::TcpConn> client, const Message & retval);
+        // static void clientResp(std::shared_ptr<tinynet::TcpConn> client, const Message & retval);
 
     private:
         const std::string                   m_name;
