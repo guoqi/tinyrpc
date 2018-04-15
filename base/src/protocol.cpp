@@ -46,7 +46,12 @@ namespace tinyrpc
         while (i < len && ! m_stop)
         {
             size_t size = m_state == State::DATA ? message.length() : blockSize.at(m_state);
-            m_buffer << src[i++];
+
+            // data section may be zero length
+            if (size != 0)
+            {
+                m_buffer << src[i++];
+            }
 
             if (m_buffer.str().size() != size)
             {

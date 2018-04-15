@@ -19,10 +19,13 @@ namespace tinyrpc
     {
         m_proxy = TcpServer::startServer(m_loop, config.main().host(), config.main().port());
         m_proxy->onClientAccepted(std::bind(&Proxy::handleAccept, this, _1));
+
+        setHeartbeat();
     }
 
     void Proxy::start()
     {
+        // start server
         for (const auto & server : ServerPool::instance().servers())
         {
             int threads = 0;
@@ -34,6 +37,8 @@ namespace tinyrpc
 
             server->initApp(threads);
         }
+
+        // start self
         m_loop.start();
     }
 
@@ -43,20 +48,17 @@ namespace tinyrpc
         {
             server->stopApp();
         }
+
         m_loop.stop();
     }
 
-    void Proxy::dispatch(std::shared_ptr<TcpConn> & client, const Message & msg)
+    void Proxy::dispatch(std::shared_ptr<TcpConn> client, const Message & msg)
     {
         switch (msg.protocol())
         {
-            case HEARTBEAT: {
-                Message retval;
-                retval.protocol(HEARTBEAT);
-                retval.seqno(msg.seqno() + 1);
-                clientOk(client, retval);
+            case HEARTBEAT:
+                debug("recv heartbeat");
                 break;
-            }
             case HANDSHAKE:
                 // TODO
                 break;
@@ -74,7 +76,7 @@ namespace tinyrpc
                 break;
             }
             default:
-                client->close();
+                clientError(client, "invalid message protocol");
                 break;
         }
     }
@@ -112,7 +114,7 @@ namespace tinyrpc
         });
     }
 
-    void Proxy::clientError(std::shared_ptr<tinynet::TcpConn> &client, const std::string & errmsg)
+    void Proxy::clientError(std::shared_ptr<tinynet::TcpConn> client, const std::string & errmsg)
     {
         client->onWrite([errmsg](shared_ptr<TcpConn> c){
             Message msg;
@@ -123,12 +125,22 @@ namespace tinyrpc
         client->readwrite(false, true);
     }
 
-    void Proxy::clientOk(std::shared_ptr<tinynet::TcpConn> & client, const Message &retval)
+    void Proxy::clientOk(std::shared_ptr<tinynet::TcpConn> client, const Message &retval)
     {
         client->onWrite([retval](shared_ptr<TcpConn> c){
             retval.sendBy(c);
             c->readwrite(true, false);
         });
         client->readwrite(false, true);
+    }
+
+    void Proxy::setHeartbeat()
+    {
+        m_loop.runAfter(HBINTVAL, [this](EventLoop & loop){
+            for (const auto & client : m_client_pool.pool()) {
+                Message msg(HEARTBEAT);
+                msg.sendBy(client);
+            }
+        }, HBINTVAL);
     }
 }

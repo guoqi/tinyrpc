@@ -6,13 +6,13 @@
 #include "errlist.h"
 #include "util.h"
 #include <memory>
+#include <config.h>
 
 using namespace std;
 using namespace std::placeholders;
 using namespace tinynet;
 using namespace util;
 
-const static int HEARTBEAT_TIME = 1000;  // send heartbeat packet every one second
 
 namespace tinyrpc
 {
@@ -93,24 +93,48 @@ namespace tinyrpc
 
     void RpcConn::handleRead(const std::shared_ptr<tinynet::TcpConn> &conn)
     {
-        // info("%s, %d", __FUNCTION__, m_asyn_recv_queue.size());
-
-        /*
-        if (detectConn())
+        if (m_should_reconnect)
         {
             reconnect();
-            return;
         }
-        */
 
-        while (! m_asyn_recv_queue.empty())
+        do
         {
-            auto & item = m_asyn_recv_queue.front();
+            RecvCallback recvcb;
+            ErrorCallback errhandler;
+
+            if (! m_asyn_recv_queue.empty()) {
+                auto &item = m_asyn_recv_queue.front();
+                recvcb = item.first;
+                errhandler = item.second;
+            }
+
             try
             {
                 Message msg = Message::recvBy(conn);
 
-                (item.first)(msg);
+                switch(msg.protocol())
+                {
+                    case HEARTBEAT: {
+                        Message retval(HEARTBEAT);
+                        asyn_send(retval, [](const TinyExp & e){});
+                        m_last_heartbeat = Time::nowMs();
+                        debug("recv heartbeat");
+                        break;
+                    }
+                    case MESSAGE:
+                        if (! m_asyn_recv_queue.empty()) {
+                            m_asyn_recv_queue.pop_front();  // pop after assignment
+                        }
+                        recvcb(msg);
+                        break;
+                    default: {
+                        Message retval;
+                        retval.data("not valid message protocol");
+                        asyn_send(retval, [](const TinyExp & e){});
+                        break;
+                    }
+                }
             }
             catch (const util::TinyExp & e)
             {
@@ -120,29 +144,26 @@ namespace tinyrpc
                 }
 
                 // else
-                (item.second)(e);
+                if (! m_asyn_recv_queue.empty()) {
+                    m_asyn_recv_queue.pop_front();
+                }
+
+                errhandler(e);
             }
             catch (...)
             {
-                m_asyn_recv_queue.pop_front();
                 throw;
             }
-            m_asyn_recv_queue.pop_front();
-        }
+        } while (! m_asyn_recv_queue.empty());
         conn->readwrite(true, true);
     }
 
     void RpcConn::handleWrite(const std::shared_ptr<tinynet::TcpConn> &conn)
     {
-        // info("%s, %d", __FUNCTION__, m_asyn_send_queue.size());
-
-        /*
-        if(detectConn())
+        if (m_should_reconnect)
         {
             reconnect();
-            return;
         }
-        */
 
         while (! m_asyn_send_queue.empty())
         {
@@ -163,10 +184,18 @@ namespace tinyrpc
 
     void RpcConn::init()
     {
-        // add heartbeat event
-        // m_conn->loop().runAfter(0, std::bind(&RpcConn::handleHeartBeat, this, _1), HEARTBEAT_TIME);
+        m_should_reconnect = false;
+        m_last_heartbeat = 0;
+
         m_conn->onRead(std::bind(&RpcConn::handleRead, this, _1));
         m_conn->onWrite(std::bind(&RpcConn::handleWrite, this, _1));
+
+        // heartbeat check
+        m_conn->loop().runAfter(HBINTVAL * 3, [this](EventLoop & loop){
+            if (Time::nowMs() - m_last_heartbeat > HBINTVAL * 3) {
+                m_should_reconnect = true;
+            }
+        }, HBINTVAL * 3);
     }
 
     void RpcConn::connect()
@@ -207,38 +236,6 @@ namespace tinyrpc
         }
         asyn_connect();
     }
-
-    bool RpcConn::detectConn()
-    {
-        bool ret;
-        try
-        {
-            ret = m_conn->checkClosed();
-        }
-        catch (const util::TinyExp & e)
-        {
-            return false;
-        }
-
-        return ret;
-    }
-
-    /*
-    void RpcConn::handleHeartBeat(tinynet::EventLoop &loop)
-    {
-        try
-        {
-            send(Message(HEARTBEAT))->asyn_recv([](Message & msg){
-                panicif(msg.protocol() == HEARTBEAT, ERR_INVALID_MESSAGE, "received not heart packet");
-            });
-        }
-        catch (util::SysExp & e)
-        {
-            error("something trouble with network. prepare to reconnect.");
-            reconnect();
-        }
-    }
-    */
 
     Connector::Connector(int max_conn)
         : m_loop (max_conn)

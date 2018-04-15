@@ -11,6 +11,7 @@
 #include "conn.h"
 #include "protocol.h"
 #include "pool.h"
+#include "thread.h"
 #include <vector>
 
 namespace tinyrpc
@@ -24,13 +25,15 @@ namespace tinyrpc
         void stop();
 
         // dispatch request to a specific server process
-        void dispatch(std::shared_ptr<tinynet::TcpConn> & client, const Message & msg);
+        void dispatch(std::shared_ptr<tinynet::TcpConn> client, const Message & msg);
 
     protected:
         void handleAccept(std::shared_ptr<tinynet::TcpConn> client);
 
-        void clientError(std::shared_ptr<tinynet::TcpConn> & client, const std::string & errmsg);
-        void clientOk(std::shared_ptr<tinynet::TcpConn> & client, const Message & retval);
+        void clientError(std::shared_ptr<tinynet::TcpConn> client, const std::string & errmsg);
+        void clientOk(std::shared_ptr<tinynet::TcpConn> client, const Message & retval);
+
+        void setHeartbeat();
 
     private:
         tinynet::EventLoop                      m_loop;

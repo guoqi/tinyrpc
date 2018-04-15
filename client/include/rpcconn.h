@@ -52,13 +52,8 @@ namespace tinyrpc
         void connect();
         void asyn_connect();
 
-        bool detectConn();
-
         void handleRead(const std::shared_ptr<tinynet::TcpConn> & conn);
         void handleWrite(const std::shared_ptr<tinynet::TcpConn> & conn);
-
-    private:    // event handler
-        void handleHeartBeat(tinynet::EventLoop & loop);
 
     private:
         std::shared_ptr<tinynet::TcpConn>   m_conn;
@@ -67,6 +62,8 @@ namespace tinyrpc
         std::list< std::pair<RecvCallback,
                 ErrorCallback> >            m_asyn_recv_queue;
         ThreadCond                          m_cond;
+        bool                                m_should_reconnect;
+        int64_t                             m_last_heartbeat;
     };
 
     class Connector : util::noncopyable

@@ -79,6 +79,8 @@ namespace tinyrpc
             m_cursize = m_free.size() + m_busy.size();
         }
 
+        const std::list<T> & pool() const { return m_free; }
+
     private:
         const size_t                    m_maxsize;
         size_t                          m_cursize;

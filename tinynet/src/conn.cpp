@@ -118,12 +118,6 @@ namespace tinynet
         return ret;
     }
 
-    bool TcpConn::checkClosed()
-    {
-        char buf[1] = {0};
-        return recv(buf, 0) == 0;
-    }
-
     shared_ptr<TcpConn> TcpConn::onRead(const TcpConnCallback &cb)
     {
         m_readAction = cb;

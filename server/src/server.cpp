@@ -38,6 +38,7 @@ namespace tinyrpc
 
         auto func = m_services[service];
 
+        // async run specified service
         int ret = m_app->makeClient([this, func, cli, msg](){
             Message retval;
             func(msg, retval);

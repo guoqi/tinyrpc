@@ -10,6 +10,8 @@
 #include <map>
 #include <rapidjson/document.h>
 
+#define HBINTVAL 1000  // send heartbeat packet every one second
+
 namespace tinyrpc
 {
     class Config;
