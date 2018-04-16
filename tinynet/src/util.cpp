@@ -11,6 +11,11 @@ namespace util
 {
     namespace Time
     {
+        int64_t now()
+        {
+            return time(nullptr);
+        }
+
         int64_t nowMs()
         {
             return nowUs() / 1000;

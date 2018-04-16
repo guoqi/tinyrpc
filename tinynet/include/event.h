@@ -116,6 +116,9 @@ namespace tinynet
             // judge if the loop is stopped
             bool isstop() { return m_stop; }
 
+            // wait until stopped
+            void wait();
+
             // timer
             void runAfter(int64_t mils, const TimerCallback &cb, int64_t interval = 0)
             {
@@ -141,7 +144,7 @@ namespace tinynet
                 {
                     bool operator() (const Timer & lhs, const Timer & rhs) const
                     {
-                        return lhs.time() < rhs.time();
+                        return lhs.time() > rhs.time();
                     }
                 };
 
@@ -163,6 +166,7 @@ namespace tinynet
         private:
             int                                             m_epfd;         // epoll fd
             bool                                            m_stop;         // event loop stop flag
+            bool                                            m_stopped;      // stopped state
 
             std::priority_queue<Timer,
                         std::vector<Timer>,

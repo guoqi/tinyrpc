@@ -17,15 +17,22 @@ namespace tinyrpc
         return thread;
     }
 
+    Thread::Thread(ThreadFunc func)
+        : m_func(std::move(func)), m_stop(false)
+    {
+        int ret = pthread_create(&m_thread, nullptr, threadFunc, this);
+        fatalif(ret != 0);
+    }
+
     Thread::~Thread()
     {
-        pthread_cancel(m_thread);   // cancel thread.
+        stop();
+        join(); // wait for thread closing
     }
 
     void Thread::run()
     {
-        int ret = pthread_create(&m_thread, nullptr, threadFunc, this);
-        fatalif(ret != 0);
+        m_cond.signal();
     }
 
     void Thread::join()
@@ -36,11 +43,17 @@ namespace tinyrpc
     void* Thread::threadFunc(void * param)
     {
         auto self = (Thread *)param;
-        (self->m_func)();
+        while (! self->m_stop)
+        {
+            (self->m_func)();
+
+            self->m_cond.wait();
+        }
     }
 
 
     ThreadCond::ThreadCond()
+        : m_signal(false)
     {
         pthread_cond_init(&m_cond, nullptr);
     }
@@ -53,13 +66,18 @@ namespace tinyrpc
     void ThreadCond::wait() noexcept
     {
         pthread_mutex_lock(&m_mtx);
-        pthread_cond_wait(&m_cond, &m_mtx);
+        while (! m_signal) {
+            pthread_cond_wait(&m_cond, &m_mtx);
+        }
+        m_signal = false;
         pthread_mutex_unlock(&m_mtx);
     }
 
     void ThreadCond::signal() noexcept
     {
+        pthread_mutex_lock(&m_mtx);
+        m_signal = true;
         pthread_cond_signal(&m_cond);
+        pthread_mutex_unlock(&m_mtx);
     }
-
 }

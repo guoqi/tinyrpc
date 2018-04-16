@@ -8,9 +8,38 @@
 #include <cstdint>
 #include <list>
 #include <set>
+#include <memory>
 
 namespace tinyrpc
 {
+
+    template<typename T>
+    class Pool;
+
+
+    template<typename T>
+    class Item
+    {
+    public:
+        typedef std::shared_ptr< Item<T> >  Ptr;
+
+        Item(Pool<T> & pool, std::shared_ptr<T> data) : m_pool(pool), m_data(data), m_using(false) {}
+        Item(const Item<T> & item): m_pool(item.m_pool), m_data(item.m_data), m_using(item.m_using) {}
+
+        ~Item() = default;
+
+        void free() { m_using = false; }
+        void use() { m_using = true; }
+        bool using_status() { return m_using; }
+
+        std::shared_ptr<T> data() const { return m_data; }
+
+    private:
+        Pool<T>   &                      m_pool;
+        std::shared_ptr<T>               m_data;
+        bool                             m_using;
+    };
+
     /**
      * Base common pool for any presist instance.
      * The instance must have copy constructor and move constructor and copyable
@@ -18,29 +47,34 @@ namespace tinyrpc
     template<typename T>
     class Pool
     {
-        // a storage entity
-        struct Item
-        {
-            struct Comp
-            {
-                bool operator() (const  Item * lhs, const Item * rhs)
-                {
-                    return lhs->use_count < rhs->use_count;
-                }
-            };
-
-            explicit Item(T && obj): use_count(0), object(std::move(obj)) {}
-
-            uint64_t use_count;
-            T        object;
-        };
-
     public:
         explicit Pool(size_t maxsize): m_maxsize(maxsize), m_cursize(0) {}
         ~Pool() = default;
 
+        // requrire type T has a constructor without any parameters
+        void init(size_t size)
+        {
+            for (size_t i=0; i<size; ++i)
+            {
+                add(std::make_shared<T> ());
+            }
+        }
+
+        void init(const std::list< std::shared_ptr<T> > & vdata)
+        {
+            for (auto const & item : vdata)
+            {
+                add(item);
+            }
+        }
+
+        int add(std::shared_ptr<T> data)
+        {
+            return add(std::make_shared< Item<T> > (*this, data));
+        }
+
         // add an object to the pool
-        int add(const T & obj)
+        int add(typename Item<T>::Ptr obj)
         {
             if (m_cursize >= m_maxsize)
             {
@@ -53,39 +87,52 @@ namespace tinyrpc
         }
 
         // get a useable instance
-        T get()
+        typename Item<T>::Ptr get()
         {
             if (m_free.empty())
             {
-                return T(); // no free space to allocate
+                return nullptr; // no free space to allocate
             }
 
             auto obj = m_free.front();
+            obj->use();
+            m_free.pop_front();
             m_busy.push_back(obj);
-            m_free.pop_back();
             return obj;
         }
 
-        int free(const T & obj)
+        int free(typename Item<T>::Ptr obj)
         {
-            remove(obj);
-            return add(obj);
-        }
+            if (! obj->using_status()) {
+                return 0;
+            }
 
-        void remove(const T & obj)
-        {
-            m_free.remove(obj);
             m_busy.remove(obj);
-            m_cursize = m_free.size() + m_busy.size();
+            obj->free();
+            m_free.push_front(obj);
         }
 
-        const std::list<T> & pool() const { return m_free; }
+        void remove(typename Item<T>::Ptr obj)
+        {
+            if (obj->using_status())
+            {
+                m_busy.remove(obj);
+            }
+            else
+            {
+                m_free.remove(obj);
+            }
+
+            m_cursize--;
+        }
+
+        const std::list< typename Item<T>::Ptr > & pool() const { return m_busy; }
 
     private:
-        const size_t                    m_maxsize;
-        size_t                          m_cursize;
-        std::list<T>                    m_free;
-        std::list<T>                    m_busy;
+        const size_t                             m_maxsize;
+        size_t                                   m_cursize;
+        std::list< typename Item<T>::Ptr >       m_free;
+        std::list< typename Item<T>::Ptr >       m_busy;
     };
 
 }

@@ -16,7 +16,7 @@ namespace tinynet
 {
 
 EventLoop::EventLoop(int maxnum)
-    : m_maxnum(maxnum), m_stop(false)
+    : m_maxnum(maxnum), m_stop(false), m_stopped(false)
 {
     m_epfd = epoll_create(maxnum);
     fatalif(m_epfd == -1);
@@ -84,6 +84,13 @@ void EventLoop::start()
     {
         loopOnce();
     }
+
+    m_stopped = true;
+}
+
+void EventLoop::wait()
+{
+    while (! m_stopped) {}
 }
 
 void EventLoop::loopOnce()
@@ -132,7 +139,7 @@ void EventLoop::loopOnce()
     if (0 == n)
     {
         // check if there are more overtime events
-        while (! m_timers.empty() && m_timers.top().time() - now == timeout)
+        while (! m_timers.empty() && m_timers.top().time() - now <= timeout)
         {
             m_readyTimers.push_back(m_timers.top());
             m_timers.pop();

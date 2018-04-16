@@ -4,7 +4,6 @@
 
 #include "proxy.h"
 #include "server.h"
-#include "thread.h"
 
 using namespace std;
 using namespace tinynet;
@@ -14,7 +13,7 @@ namespace tinyrpc
 {
     Proxy::Proxy(const Config &config)
         : m_loop(config.proxy().maxConn()),
-          m_client_pool((size_t)config.proxy().maxConn()),
+          m_maxclient((size_t)config.proxy().maxConn()),
           m_config(config)
     {
         m_proxy = TcpServer::startServer(m_loop, config.main().host(), config.main().port());
@@ -57,6 +56,7 @@ namespace tinyrpc
         switch (msg.protocol())
         {
             case HEARTBEAT:
+                m_clients[client] = util::Time::nowMs();
                 debug("recv heartbeat");
                 break;
             case HANDSHAKE:
@@ -67,7 +67,6 @@ namespace tinyrpc
                 if (dst.first != nullptr)
                 {
                     dst.first->handleService(dst.second, msg);
-                    debug("hhhhhh");
                 }
                 else
                 {
@@ -83,13 +82,15 @@ namespace tinyrpc
 
     void Proxy::handleAccept(std::shared_ptr<tinynet::TcpConn> client)
     {
-        if (m_client_pool.add(client) == -1)
+        if (m_clients.size() >= m_maxclient)
         {
             string errmsg = "connection pool is full";
             error("%s", errmsg.c_str());
             clientError(client, errmsg);
             return;
         }
+
+        m_clients[client] = util::Time::nowMs();
 
         client->onRead([this](shared_ptr<TcpConn> c){
             bool stop = false;
@@ -137,10 +138,30 @@ namespace tinyrpc
     void Proxy::setHeartbeat()
     {
         m_loop.runAfter(HBINTVAL, [this](EventLoop & loop){
-            for (const auto & client : m_client_pool.pool()) {
+            for (const auto & item : m_clients) {
                 Message msg(HEARTBEAT);
-                msg.sendBy(client);
+
+                try
+                {
+                    msg.sendBy(item.first);
+                }
+                catch (util::TinyExp & e)
+                {
+                    if (e.code() != NET_WOULD_BLOCK)
+                    {
+                        m_clients.erase(item.first);
+                    }
+                }
             }
         }, HBINTVAL);
+
+        m_loop.runAfter(3 * HBINTVAL, [this](EventLoop & loop){
+            for (const auto & item : m_clients) {
+                if (util::Time::nowMs() - item.second >= 3 * HBINTVAL)
+                {
+                    m_clients.erase(item.first);
+                }
+            }
+        }, 3 * HBINTVAL);
     }
 }

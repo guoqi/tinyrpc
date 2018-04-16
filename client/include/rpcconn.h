@@ -69,7 +69,7 @@ namespace tinyrpc
     class Connector : util::noncopyable
     {
     public:
-        virtual ~Connector() { m_loop.stop(); m_main_thread->join();  }
+        virtual ~Connector() { m_loop.stop(); }
 
         static Connector & instance();
 

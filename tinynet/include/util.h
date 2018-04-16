@@ -67,6 +67,7 @@ namespace util
     namespace Time
     {
         // get current time (miloseconds format)
+        int64_t now();
         int64_t nowMs();
         int64_t nowUs();
         std::string datetime();

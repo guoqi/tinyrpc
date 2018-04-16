@@ -123,10 +123,10 @@ namespace tinyrpc
                         break;
                     }
                     case MESSAGE:
+                        recvcb(msg);
                         if (! m_asyn_recv_queue.empty()) {
                             m_asyn_recv_queue.pop_front();  // pop after assignment
                         }
-                        recvcb(msg);
                         break;
                     default: {
                         Message retval;
@@ -144,11 +144,11 @@ namespace tinyrpc
                 }
 
                 // else
+                errhandler(e);
+
                 if (! m_asyn_recv_queue.empty()) {
                     m_asyn_recv_queue.pop_front();
                 }
-
-                errhandler(e);
             }
             catch (...)
             {

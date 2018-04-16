@@ -10,9 +10,8 @@
 #include "event.h"
 #include "conn.h"
 #include "protocol.h"
-#include "pool.h"
-#include "thread.h"
 #include <vector>
+#include <map>
 
 namespace tinyrpc
 {
@@ -38,8 +37,9 @@ namespace tinyrpc
     private:
         tinynet::EventLoop                      m_loop;
         std::shared_ptr<tinynet::TcpServer>     m_proxy;
-        Pool< std::shared_ptr<
-                tinynet::TcpConn> >             m_client_pool;
+        std::map< std::shared_ptr<
+                tinynet::TcpConn>, int64_t >    m_clients;
+        size_t                                  m_maxclient;
         Config                                  m_config;
     };
 }

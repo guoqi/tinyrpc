@@ -39,17 +39,18 @@ namespace tinyrpc
         auto func = m_services[service];
 
         // async run specified service
-        int ret = m_app->makeClient([this, func, cli, msg](){
+        auto client = m_app->makeClient([this, func, cli, msg](Item<Thread>::Ptr thread){
             Message retval;
             func(msg, retval);
             debug("retval=%s", retval.data().c_str());
             retval.sendBy(cli);
             cli->detach();
 
-            // TODO free thread
+            // free thread
+            m_app->recycle(thread);
         });
 
-        if (ret == -1)
+        if (nullptr == client)  // busy
         {
             Message retval;
             retval.data("server is very busy now!");
@@ -108,6 +109,7 @@ namespace tinyrpc
     App::App(int max_client):
         m_loop(max_client), m_clients((size_t)max_client), m_max_client(max_client)
     {
+        m_clients.init((size_t)max_client);
     }
 
     void App::start()
@@ -122,8 +124,22 @@ namespace tinyrpc
         m_loop.stop();
     }
 
-    int App::makeClient(const ThreadFunc & func)
+    Item<Thread>::Ptr App::makeClient(std::function<void(Item<Thread>::Ptr)> func)
     {
-        return m_clients.add(Thread::create(func));
+        auto client = m_clients.get();
+
+        if (nullptr != client)
+        {
+            client->data()->attach(std::bind(func, client));
+            client->data()->run();
+        }
+
+        return client;
+    }
+
+    void App::recycle(Item<Thread>::Ptr thread)
+    {
+        thread->data()->attach([](){});
+        m_clients.free(std::move(thread));
     }
 }

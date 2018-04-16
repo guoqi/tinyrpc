@@ -101,11 +101,13 @@ namespace tinyrpc
     {
     public:
         App(int max_client);
-        virtual ~App() {}
+        virtual ~App() { stop(); }
 
         void start();
         void stop();
-        int makeClient(const ThreadFunc & func);
+        Item<Thread>::Ptr makeClient(std::function<void(Item<Thread>::Ptr)> func);
+
+        void recycle(Item<Thread>::Ptr thread);
 
         tinynet::EventLoop & loop() { return m_loop; }
 
@@ -113,7 +115,7 @@ namespace tinyrpc
         int                                     m_max_client;
         tinynet::EventLoop                      m_loop;
         std::shared_ptr<Thread>                 m_main_thread;
-        Pool< std::shared_ptr<Thread> >         m_clients;
+        Pool<Thread>                            m_clients;
     };
 
 }
