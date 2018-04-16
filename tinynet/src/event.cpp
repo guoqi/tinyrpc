@@ -88,11 +88,6 @@ void EventLoop::start()
     m_stopped = true;
 }
 
-void EventLoop::wait()
-{
-    while (! m_stopped) {}
-}
-
 void EventLoop::loopOnce()
 {
     epoll_event * events = new epoll_event[m_maxnum];

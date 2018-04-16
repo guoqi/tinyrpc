@@ -116,9 +116,6 @@ namespace tinynet
             // judge if the loop is stopped
             bool isstop() { return m_stop; }
 
-            // wait until stopped
-            void wait();
-
             // timer
             void runAfter(int64_t mils, const TimerCallback &cb, int64_t interval = 0)
             {
