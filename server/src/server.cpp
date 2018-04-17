@@ -39,15 +39,12 @@ namespace tinyrpc
         auto func = m_services[service];
 
         // async run specified service
-        auto client = m_app->makeClient([this, func, cli, msg](Item<Thread>::Ptr thread){
+        auto client = m_app->makeClient([this, func, cli, msg](){
             Message retval;
             func(msg, retval);
             debug("retval=%s", retval.data().c_str());
             retval.sendBy(cli);
             cli->detach();
-
-            // free thread
-            m_app->recycle(thread);
         });
 
         if (nullptr == client)  // busy
@@ -62,15 +59,6 @@ namespace tinyrpc
     {
         m_services[service] = std::move(func);
     }
-
-    /*
-    void Server::clientResp(std::shared_ptr<tinynet::TcpConn> client, const Message &retval)
-    {
-        client->onWrite([=](shared_ptr<TcpConn> c){
-            retval.sendBy(c);
-        });
-    }
-    */
 
     ServerPool & ServerPool::instance()
     {
@@ -124,13 +112,17 @@ namespace tinyrpc
         m_loop.stop();
     }
 
-    Item<Thread>::Ptr App::makeClient(std::function<void(Item<Thread>::Ptr)> func)
+    Item<Thread>::Ptr App::makeClient(ThreadFunc func)
     {
         auto client = m_clients.get();
 
         if (nullptr != client)
         {
-            client->data()->attach(std::bind(func, client));
+            // auto recycle thread when func is over
+            client->data()->attach([this, client, func](){
+                func();
+                this->recycle(client);
+            });
             client->data()->run();
         }
 

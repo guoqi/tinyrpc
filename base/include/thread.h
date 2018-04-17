@@ -32,6 +32,17 @@ namespace tinyrpc
     };
 
 
+    class ThreadMutex
+    {
+    public:
+        ThreadMutex();
+        ~ThreadMutex();
+
+    private:
+        pthread_mutex_t     m_mtx;
+    };
+
+
     class Thread : util::noncopyable
     {
     public:

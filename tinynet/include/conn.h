@@ -48,7 +48,7 @@ namespace tinynet
         static std::shared_ptr<TcpConn> createConnection(EventLoop & loop, const UdsAddr & addr);
         static std::shared_ptr<TcpConn> createAttacher(EventLoop & loop, int fd);
 
-        virtual ~TcpConn() { close(); }
+        virtual ~TcpConn() { close(); debug("connection is closed and destruct"); }
 
         void closeRead() { m_event.readable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_RD); }
         void closeWrite() { m_event.writeable(false); m_loop.alter(m_event); ::shutdown(m_event.fd(), SHUT_WR); }

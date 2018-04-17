@@ -105,11 +105,13 @@ namespace tinyrpc
 
         void start();
         void stop();
-        Item<Thread>::Ptr makeClient(std::function<void(Item<Thread>::Ptr)> func);
 
-        void recycle(Item<Thread>::Ptr thread);
+        Item<Thread>::Ptr makeClient(ThreadFunc func);
 
         tinynet::EventLoop & loop() { return m_loop; }
+
+    protected:
+        void recycle(Item<Thread>::Ptr thread);
 
     protected:
         int                                     m_max_client;

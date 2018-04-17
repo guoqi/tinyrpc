@@ -56,7 +56,7 @@ namespace tinyrpc
         switch (msg.protocol())
         {
             case HEARTBEAT:
-                m_clients[client] = util::Time::nowMs();
+                m_clients[client->fd()].second = util::Time::nowMs();
                 debug("recv heartbeat");
                 break;
             case HANDSHAKE:
@@ -90,7 +90,8 @@ namespace tinyrpc
             return;
         }
 
-        m_clients[client] = util::Time::nowMs();
+        //m_clients[client->fd()] = std::make_pair(client, util::Time::now());
+        m_clients.insert(std::make_pair(client->fd(), std::make_pair(client, util::Time::nowMs())));
 
         client->onRead([this](shared_ptr<TcpConn> c){
             bool stop = false;
@@ -104,12 +105,15 @@ namespace tinyrpc
                 }
                 catch (util::TinyExp & e)
                 {
-                    if (e.code() == NET_WOULD_BLOCK)
+                    if (e.code() == NET_PEER_CLOSE)
                     {
-                        stop = true;
-                        continue;
+                        m_clients.erase(c->fd());
                     }
-                    throw;
+                    else if (e.code() != NET_WOULD_BLOCK)
+                    {
+                        info("[%d:%s] unexpected error happened when read from client.", e.code(), e.what());
+                    }
+                    stop = true;
                 }
             }
         });
@@ -137,13 +141,13 @@ namespace tinyrpc
 
     void Proxy::setHeartbeat()
     {
-        m_loop.runAfter(HBINTVAL, [this](EventLoop & loop){
+        m_loop.runAfter(0, [this](EventLoop & loop){
             for (const auto & item : m_clients) {
                 Message msg(HEARTBEAT);
 
                 try
                 {
-                    msg.sendBy(item.first);
+                    msg.sendBy(item.second.first);
                 }
                 catch (util::TinyExp & e)
                 {
@@ -157,7 +161,7 @@ namespace tinyrpc
 
         m_loop.runAfter(3 * HBINTVAL, [this](EventLoop & loop){
             for (const auto & item : m_clients) {
-                if (util::Time::nowMs() - item.second >= 3 * HBINTVAL)
+                if (util::Time::nowMs() - item.second.second >= 3 * HBINTVAL)
                 {
                     m_clients.erase(item.first);
                 }

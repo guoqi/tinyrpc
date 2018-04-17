@@ -55,12 +55,14 @@ namespace tinyrpc
     ThreadCond::ThreadCond()
         : m_signal(false)
     {
+        pthread_mutex_init(&m_mtx, nullptr);
         pthread_cond_init(&m_cond, nullptr);
     }
 
     ThreadCond::~ThreadCond()
     {
         pthread_cond_destroy(&m_cond);
+        pthread_mutex_destroy(&m_mtx);
     }
 
     void ThreadCond::wait() noexcept
@@ -79,5 +81,18 @@ namespace tinyrpc
         m_signal = true;
         pthread_cond_signal(&m_cond);
         pthread_mutex_unlock(&m_mtx);
+    }
+
+
+    ThreadMutex::ThreadMutex()
+    {
+        pthread_mutex_init(&m_mtx, nullptr);
+        pthread_mutex_lock(&m_mtx);
+    }
+
+    ThreadMutex::~ThreadMutex()
+    {
+        pthread_mutex_unlock(&m_mtx);
+        pthread_mutex_destroy(&m_mtx);
     }
 }

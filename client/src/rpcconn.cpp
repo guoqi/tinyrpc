@@ -100,8 +100,8 @@ namespace tinyrpc
 
         do
         {
-            RecvCallback recvcb;
-            ErrorCallback errhandler;
+            RecvCallback recvcb = [](Message & e) {};
+            ErrorCallback errhandler = [](const TinyExp & e) {};
 
             if (! m_asyn_recv_queue.empty()) {
                 auto &item = m_asyn_recv_queue.front();

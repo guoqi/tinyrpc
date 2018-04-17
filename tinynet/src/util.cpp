@@ -24,20 +24,26 @@ namespace util
         int64_t nowUs()
         {
             struct timeval tv;
-            gettimeofday(&tv, NULL);
+            gettimeofday(&tv, nullptr);
 
             return tv.tv_sec * 1000000 + tv.tv_usec;
         }
 
-        // current datetime in xxxx-xx-xx xx:xx:xx format
+        // current datetime in xxxx-xx-xx xx:xx:xx xxx(ms) format
         std::string datetime()
         {
-            time_t tm = time(nullptr);
+            struct timeval tv;
+            gettimeofday(&tv, nullptr);
+
+            time_t tm = tv.tv_sec;
             char buf[32] = {0};
+            char result[32] = {0};
 
             strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&tm));
 
-            return std::string(buf);
+            snprintf(result, sizeof(result), "%s %03ld", buf, tv.tv_usec / 1000);
+
+            return std::string(result);
         }
     }
 

@@ -12,6 +12,7 @@
 #include "protocol.h"
 #include <vector>
 #include <map>
+#include <tuple>
 
 namespace tinyrpc
 {
@@ -37,8 +38,9 @@ namespace tinyrpc
     private:
         tinynet::EventLoop                      m_loop;
         std::shared_ptr<tinynet::TcpServer>     m_proxy;
-        std::map< std::shared_ptr<
-                tinynet::TcpConn>, int64_t >    m_clients;
+        std::map< int, std::pair<
+                std::shared_ptr<
+                tinynet::TcpConn>, int64_t > >  m_clients;  // fd -> (conn, last_acctime)
         size_t                                  m_maxclient;
         Config                                  m_config;
     };
