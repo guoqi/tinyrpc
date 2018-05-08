@@ -15,3 +15,7 @@ add_library(rpcsvr STATIC $<TARGET_OBJECTS:tinynet>
 add_library(rpccli STATIC $<TARGET_OBJECTS:tinynet>
                           $<TARGET_OBJECTS:base>
                           $<TARGET_OBJECTS:rpc_client>)
+
+
+enable_testing()
+add_test(test_base ./base/test_base)
