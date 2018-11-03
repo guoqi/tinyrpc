@@ -42,10 +42,12 @@ namespace tinyrpc
         auto client = m_app->makeClient([this, func, cli, msg](){
             Message retval;
             func(msg, retval);
-            debug("retval=%s", retval.data().c_str());
+            info("retval=%s", retval.data().c_str());
             retval.sendBy(cli);
             cli->detach();
         });
+
+        info("piapiapia");
 
         if (nullptr == client)  // busy
         {
@@ -80,7 +82,7 @@ namespace tinyrpc
 
     std::pair< std::shared_ptr<Server>, std::string > ServerPool::locate(uint64_t sid)
     {
-        info("sid=%d, servers size=%d, services size=%d", sid, m_servers.size(), m_services.size());
+        debug("sid=%d, servers size=%d, services size=%d", sid, m_servers.size(), m_services.size());
         if (m_services.find(sid) == m_services.end())
         {
             return std::pair< std::shared_ptr<Server>, std::string> ();

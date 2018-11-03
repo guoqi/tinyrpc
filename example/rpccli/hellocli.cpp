@@ -26,29 +26,29 @@ int main()
         msg.dst(1);
         msg.data("11111111111111");
         Hello.hello(msg, retval);  // syn call
-        debug("resp=%s", retval.data().c_str());
+        info("resp=%s", retval.data().c_str());
         msg.data("22222222222222");
         Hello.hello(msg, retval);  // syn call
-        debug("resp=%s", retval.data().c_str());
+        info("resp=%s", retval.data().c_str());
 
         // asyn call
         msg.data("3333333333333");
         Hello.hello(msg, [](Message & retval){
-            debug("asyn resp=%s", retval.data().c_str());
+            info("asyn resp=%s", retval.data().c_str());
         }, [](const TinyExp & e){
-            debug("errhanlder=%s", e.what());
+            info("errhanlder=%s", e.what());
         });
 
         msg.data("444444444444444");
         Hello.hello(msg, [](Message & retval){
-            debug("asyn 2 resp=%s", retval.data().c_str());
+            info("asyn 2 resp=%s", retval.data().c_str());
         }, [](const TinyExp & e){
-            debug("errhandler_2=%s", e.what());
+            info("errhandler_2=%s", e.what());
         });
 
         msg.data("5555555555555555");
         Hello.hello(msg, retval);
-        debug("syn resp=%s", retval.data().c_str());
+        info("syn resp=%s", retval.data().c_str());
 
         sleep(10);
     }

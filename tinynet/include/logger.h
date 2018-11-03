@@ -11,6 +11,9 @@
 #include <pthread.h>
 #include "util.h"
 
+#define LOG_LEVEL 2
+#define ENABLE_FLUSH 1
+
 /**
  * Macro for handling fatal errors. Use exception and can not be ignored
  * fatal family is used on system call error (like bad file descriptor, invalid params and so on)
@@ -21,6 +24,7 @@
 #define panic(err, msg)             do { error("panic [%d:%s]", err, msg); throw util::TinyExp(err, msg, __LINE__, __FILE__); } while (false)
 #define panicif(cond, err, msg)     do { if ((cond)) { error("panic [%d:%s]", err, msg); throw util::TinyExp(err, msg, __LINE__, __FILE__); } } while (false)
 #define returnif(cond, r)           do { if ((cond)) return r; } while (false)
+#define throwif(cond, err, msg)     do { if ((cond)) { throw util::TinyExp(err, msg, __LINE__, __FILE__); } } while (false)
 
 /**
  * Macro for handling non-fatal fails
@@ -32,6 +36,9 @@
 #define errorif(cond, fmt, ...)           do { if((cond)) error(fmt, ##__VA_ARGS__); } while(false)
 
 
+#define flush(fd) do { if (ENABLE_FLUSH) { fflush(fd); } } while(false)
+
+
 /**
  * base log macro
  */
@@ -40,13 +47,16 @@
 #define warn(fmt, ...)      log(stderr, util::LogLevel::WARN, fmt, ##__VA_ARGS__)
 #define error(fmt, ...)     log(stderr, util::LogLevel::ERROR, fmt, ##__VA_ARGS__)
 
-#define log(fd, level, fmt, ...) do { fprintf(fd, "[%s][%s][%u][%s][%d]" fmt "\n", \
+#define log(fd, level, fmt, ...) do { if (static_cast<int>(level) >= LOG_LEVEL) { \
+                                        fprintf(fd, "[%s][%s][%u][%s][%d]" fmt "\n", \
                                         util::Time::datetime().c_str(), \
                                         util::LEVEL_STRING.at(level).c_str(), \
                                         pthread_self(), \
                                         __FILE__, \
                                         __LINE__, \
-                                        ##__VA_ARGS__); } while (false)
+                                        ##__VA_ARGS__); \
+                                        flush(fd);  \
+                                    } } while (false)
 
 namespace util
 {

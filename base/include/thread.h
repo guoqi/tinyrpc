@@ -38,8 +38,22 @@ namespace tinyrpc
         ThreadMutex();
         ~ThreadMutex();
 
+        void lock() noexcept;
+        void unlock() noexcept;
+
     private:
         pthread_mutex_t     m_mtx;
+    };
+
+
+    class ThreadGuard
+    {
+    public:
+        explicit ThreadGuard(ThreadMutex & mutex);
+        ~ThreadGuard();
+
+    private:
+        ThreadMutex &      m_mutex;
     };
 
 

@@ -48,7 +48,7 @@ namespace tinyrpc
     class Pool
     {
     public:
-        explicit Pool(size_t maxsize): m_maxsize(maxsize), m_cursize(0) {}
+        explicit Pool(size_t maxsize): m_maxsize(maxsize) {}
         ~Pool() = default;
 
         // requrire type T has a constructor without any parameters
@@ -76,44 +76,47 @@ namespace tinyrpc
         // add an object to the pool
         int add(typename Item<T>::Ptr obj)
         {
-            if (m_cursize >= m_maxsize)
+            ThreadGuard guard(m_mutex);
+            if (size() >= m_maxsize)
             {
                 return -1;  // the pool is full
             }
 
             m_free.push_back(obj);
-            m_cursize++;
             return 0;
         }
 
         // get a useable instance
         typename Item<T>::Ptr get()
         {
+            ThreadGuard guard(m_mutex);
             if (m_free.empty())
             {
                 return nullptr; // no free space to allocate
             }
 
-            auto obj = m_free.front();
+            auto & obj = m_free.front();
             obj->use();
-            m_free.pop_front();
             m_busy.push_back(obj);
+            m_free.pop_front();
             return obj;
         }
 
-        int free(typename Item<T>::Ptr obj)
+        void free(typename Item<T>::Ptr obj)
         {
+            ThreadGuard guard(m_mutex);
             if (! obj->using_status()) {
-                return 0;
+                return;
             }
 
-            m_busy.remove(obj);
             obj->free();
-            m_free.push_front(obj);
+            m_free.push_back(obj);
+            m_busy.remove(obj);
         }
 
         void remove(typename Item<T>::Ptr obj)
         {
+            ThreadGuard guard(m_mutex);
             if (obj->using_status())
             {
                 m_busy.remove(obj);
@@ -122,17 +125,18 @@ namespace tinyrpc
             {
                 m_free.remove(obj);
             }
-
-            m_cursize--;
         }
 
-        const std::list< typename Item<T>::Ptr > & pool() const { return m_busy; }
+        size_t size()
+        {
+            return m_free.size() + m_busy.size();
+        }
 
     private:
         const size_t                             m_maxsize;
-        size_t                                   m_cursize;
         std::list< typename Item<T>::Ptr >       m_free;
         std::list< typename Item<T>::Ptr >       m_busy;
+        ThreadMutex                              m_mutex;
     };
 
 }

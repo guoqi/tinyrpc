@@ -15,7 +15,7 @@ void HelloSvr::destory() {}
 
 void HelloSvr::hello(const Message &msg, Message &retval)
 {
-    debug("%s", msg.data().c_str());
+    info("%s", msg.data().c_str());
     retval.protocol(MESSAGE);
     retval.data("hello world");
 }

@@ -32,7 +32,7 @@ namespace tinyrpc
 
     RpcConn * RpcConn::send(const Message &msg)
     {
-        m_asyn_send_queue.emplace_back([this, msg](){
+        m_asyn_send_queue.push_back([this, msg](){
             try
             {
                 msg.sendBy(m_conn);
@@ -61,7 +61,7 @@ namespace tinyrpc
             m_cond.signal();
         };
 
-        m_asyn_recv_queue.emplace_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
+        m_asyn_recv_queue.push_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
 
         m_cond.wait();
 
@@ -70,7 +70,7 @@ namespace tinyrpc
 
     RpcConn* RpcConn::asyn_send(const Message &msg, const ErrorCallback & errhandler)
     {
-        m_asyn_send_queue.emplace_back([this, msg, errhandler]() {
+        m_asyn_send_queue.push_back([this, msg, errhandler]() {
             try
             {
                 msg.sendBy(m_conn);
@@ -86,7 +86,7 @@ namespace tinyrpc
 
     RpcConn * RpcConn::asyn_recv(const RecvCallback & cb, const ErrorCallback & errhandler)
     {
-        m_asyn_recv_queue.emplace_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
+        m_asyn_recv_queue.push_back(std::pair<RecvCallback, ErrorCallback>(cb, errhandler));
 
         return this;
     }

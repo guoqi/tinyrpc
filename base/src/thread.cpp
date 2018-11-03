@@ -87,12 +87,31 @@ namespace tinyrpc
     ThreadMutex::ThreadMutex()
     {
         pthread_mutex_init(&m_mtx, nullptr);
-        pthread_mutex_lock(&m_mtx);
     }
 
     ThreadMutex::~ThreadMutex()
     {
-        pthread_mutex_unlock(&m_mtx);
         pthread_mutex_destroy(&m_mtx);
+    }
+
+    void ThreadMutex::lock() noexcept
+    {
+        pthread_mutex_lock(&m_mtx);
+    }
+
+    void ThreadMutex::unlock() noexcept
+    {
+        pthread_mutex_unlock(&m_mtx);
+    }
+
+    ThreadGuard::ThreadGuard(ThreadMutex &mutex)
+        : m_mutex(mutex)
+    {
+        m_mutex.lock();
+    }
+
+    ThreadGuard::~ThreadGuard()
+    {
+        m_mutex.unlock();
     }
 }

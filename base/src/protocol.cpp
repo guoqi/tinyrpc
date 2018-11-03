@@ -192,10 +192,10 @@ namespace tinyrpc
         {
             len = conn->recv(buffer, sizeof(buffer));
 
-            panicif(len == 0, NET_PEER_CLOSE, "peer socket closed");
+            throwif(len == 0, NET_PEER_CLOSE, "peer socket closed");
 
             // we already check errno in conn->recv function so there is only one section when len is -1
-            panicif(len == -1, NET_WOULD_BLOCK, "recv buffer is empty and recv operation would block");
+            throwif(len == -1, NET_WOULD_BLOCK, "recv buffer is empty and recv operation would block");
 
             if (len > 0) {
                 parser(string(buffer, len), msg);

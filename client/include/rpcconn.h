@@ -10,6 +10,7 @@
 #include "net.h"
 #include "protocol.h"
 #include "thread.h"
+#include "ts_queue.h"
 #include <memory>
 #include <map>
 #include <list>
@@ -58,8 +59,8 @@ namespace tinyrpc
     private:
         std::shared_ptr<tinynet::TcpConn>   m_conn;
         AddrType                            m_addrType;
-        std::list<SendCallback>             m_asyn_send_queue;
-        std::list< std::pair<RecvCallback,
+        TSLockQueue<SendCallback>           m_asyn_send_queue;
+        TSLockQueue< std::pair<RecvCallback,
                 ErrorCallback> >            m_asyn_recv_queue;
         ThreadCond                          m_cond;
         bool                                m_should_reconnect;
